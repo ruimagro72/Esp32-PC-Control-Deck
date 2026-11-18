@@ -1,0 +1,36 @@
+# Build output
+simulator/build/
+simulator/launcher/sim_launcher
+simulator/emu/lcd_touch_host
+simulator/tests/smoke_console_log
+simulator/tests/smoke_firmware_mgr
+simulator/tests/smoke_validate
+simulator/tests/results/
+simulator/tests/.tools/
+
+# Runtime outputs (logs, screenshots, WAV captures)
+simulator/logs/
+simulator/screenshots/
+simulator/emu/*.wav
+
+# esp-emu binary package (installed locally, not in the repository)
+simulator/esp-emu-*/
+
+# Local state: rewritten on every run; launcher.conf can hold the Wi-Fi passphrase
+simulator/emu/.hw_rotation
+simulator/emu/.hw_board
+simulator/launcher/launcher.conf
+simulator/launcher/profiles/active.json
+simulator/launcher/profiles/new-profile.json
+simulator/launcher/locale/
+
+# SD card image (built from the card folder)
+simulator/emu/storage/*.img
+
+# Editor and OS files
+*.o
+*.d
+*.tmp
+*.swp
+*~
+.DS_Store

@@ -1,0 +1,134 @@
+{
+  "$schema": "../profile.schema.json",
+  "schema_version": "simulator.profile/v1",
+  "metadata": {
+    "id": "test-ble-hci",
+    "name": "Test: BLE over HCI",
+    "description": "Test profile: SD card on, networking off, Wi-Fi off, BLE on over HCI tcp:localhost:9544.",
+    "tags": [
+      "example",
+      "es3c28p",
+      "local",
+      "emu"
+    ],
+    "board_preset": "es3c28p",
+    "timestamps": {
+      "created_at": "2026-11-16T00:00:00Z",
+      "updated_at": "2026-11-16T00:00:00Z"
+    }
+  },
+  "board_hardware": {
+    "board_id": "es3c28p",
+    "mcu": {
+      "chip": "esp32s3",
+      "psram": "8M",
+      "flash": "16M"
+    },
+    "display": {
+      "width": 240,
+      "height": 320,
+      "overrides": {
+        "hw_rotation": 0
+      },
+      "orientation": 0,
+      "panel": {
+        "name": "ILI9341"
+      }
+    },
+    "touch": {
+      "controller": "FT6336G",
+      "bus": "i2c",
+      "pins": {
+        "sda": 16,
+        "scl": 15,
+        "int": 17,
+        "rst": 18
+      },
+      "calibration": {}
+    },
+    "buses_pins": {},
+    "cosim": {
+      "mode": "board_json",
+      "board_json": "simulator/emu/board-es3c28p.json",
+      "tcp": null,
+      "unix": null
+    }
+  },
+  "firmware": {
+    "selection": "local_es3c28p_emu",
+    "format": "merged",
+    "artifacts": {
+      "merged": "simulator/build/merged-emu.bin",
+      "boot": null,
+      "part": null,
+      "app": null,
+      "elf": "firmware/.pio/build/es3c28p_emu/firmware.elf",
+      "use_elf": true,
+      "littlefs": null,
+      "uf2": null
+    },
+    "flash": {
+      "mode": "dio",
+      "freq": "80m",
+      "size": "16MB",
+      "offsets": {}
+    },
+    "build": {
+      "env": "es3c28p_emu"
+    },
+    "resolved": {}
+  },
+  "storage": {
+    "littlefs": {
+      "enabled": false,
+      "image_path": null,
+      "mount_path": null
+    },
+    "sd_enabled": true,
+    "sd_image_path": "simulator/emu/storage/sd.img",
+    "sd_card": {
+      "enabled": false,
+      "image_path": null,
+      "mount_path": null,
+      "note": "esp-emu 1.1.0 mounts the card image with --sd"
+    }
+  },
+  "audio": {
+    "enabled": true,
+    "out": null,
+    "in": null,
+    "realtime": false
+  },
+  "network_radio": {
+    "net_user": false,
+    "hostfwd": [],
+    "wifi": {
+      "enabled": false,
+      "ssid": "",
+      "auth": "open"
+    },
+    "ble": {
+      "enabled": true,
+      "hci": "tcp:localhost:9544"
+    },
+    "net_mode": ""
+  },
+  "emu_runtime": {
+    "esp_emu_path": "simulator/esp-emu-1.1.0-x86_64-unknown-linux-gnu/esp-emu",
+    "chip": "esp32s3",
+    "psram": "8M",
+    "timeout": null,
+    "instance": 0,
+    "extra_args": "",
+    "console_mode": "tcp"
+  },
+  "ui_state": {
+    "scale": 2,
+    "window": {
+      "maximized": false
+    },
+    "panels": {},
+    "last_run": {}
+  },
+  "extensions": {}
+}

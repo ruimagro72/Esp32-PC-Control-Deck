@@ -1,0 +1,79 @@
+{
+  "id": "es3c28p",
+  "name": "ES3C28P (KryonDeck local emu target)",
+  "mcu": "esp32s3",
+  "flash_mb": 16,
+  "psram_mb": 8,
+  "display": {
+    "width": 240,
+    "height": 320,
+    "controller": "ILI9341",
+    "bus": "spi",
+    "interface": "SPI (4-wire)",
+    "color_depth_bits": 16,
+    "notes": "SPI live display via external cosim host; routing/model gaps observed in esp-emu tests (matrix: needs-runtime-host)."
+  },
+  "touch_input": {
+    "type": "touch",
+    "controller": "FT6336G",
+    "bus": "i2c",
+    "i2c_addr": "0x38",
+    "keyboard": null,
+    "notes": "I2C regfile/init-poll supported with board-es3c28p.json; full interaction depends on model/part."
+  },
+  "audio": {
+    "codec": "ES8311",
+    "codec_i2c_addr": "0x18",
+    "bus": "i2s+i2c",
+    "notes": "I2S WAV out/in by file supported; realtime PCM/codec full path conditional. ESP_EMU_SKIP_AUDIO skips audio/SD/ADC init in es3c28p_emu build."
+  },
+  "storage": {
+    "flash_fs": "LittleFS/spiffs partition (merge may include FS @0xc90000 per layout)",
+    "sd": "SDMMC 4-bit (hardware)",
+    "sd_emulation": "supported-now (esp-emu 1.1.0 --sd, ESP32-S3 SDMMC; verified with a card image)",
+    "notes": "simulator/SD_Card (~37MB) > spiffs 3.36MB; not directly mappable. esp-emu 1.1.0 mounts a card image with --sd; the es3c28p_emu build runs the same initSD() (not gated by ESP_EMU_SKIP_AUDIO)."
+  },
+  "cosim_board_json_suggested": "simulator/emu/board-es3c28p.json",
+  "firmware_presets": {
+    "local": {
+      "merged": "simulator/build/merged-emu.bin",
+      "elf": "firmware/.pio/build/es3c28p_emu/firmware.elf",
+      "env": "es3c28p_emu",
+      "use_elf_default": true,
+      "notes": "Local emu build; es3c28p (hw) env also exists."
+    },
+    "kryonos_v3": {
+      "merged": null,
+      "elf": null,
+      "env": null,
+      "use_elf_default": false,
+      "notes": "No KryonOS v3.0.0 release asset for es3c28p in prep matrix; use local/asset flows."
+    },
+    "asset_es3c28p": {
+      "merged": "simulator/emu/firmware/es3c28p/merged.bin",
+      "elf": null,
+      "notes": "Optional asset ELF if present alongside asset."
+    }
+  },
+  "pins": {
+    "lcd_spi": { "cs": 10, "dc": 46, "bl": 45, "sclk": 12, "mosi": 11, "miso": 13 },
+    "touch_i2c": { "addr": "0x38", "scl": 15, "sda": 16, "int": 17, "rst": 18 },
+    "other": { "ws2812_gpio": 42 },
+    "notes": "From simulator/emu/panel_config.h and HARDWARE-SUPPORT.md."
+  },
+  "support": {
+    "serial_headless_local_emu": "supported-now",
+    "display_spi_live": "needs-runtime-host",
+    "touch_i2c_ft6336g": "supported-now",
+    "audio_i2s_wav": "supported-now",
+    "sdmmc_emu": "supported-now",
+    "cosim_in_process": "supported-now",
+    "cosim_tcp_external": "supported-now",
+    "parallel_display": "n/a"
+  },
+  "notes": [
+    "Boot serial/headless supported for es3c28p_emu build (ESP_EMU_SKIP_AUDIO).",
+    "Host SDL pins/resolution largely compiled in panel_config.h; runtime overrides partial.",
+    "SDMMC via esp-emu 1.1.0 --sd (card image from ./start.sh card image)."
+  ]
+}

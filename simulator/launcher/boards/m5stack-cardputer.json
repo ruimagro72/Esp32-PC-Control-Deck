@@ -1,0 +1,77 @@
+{
+  "id": "m5stack-cardputer",
+  "name": "M5Stack Cardputer",
+  "mcu": "esp32s3",
+  "flash_mb": 8,
+  "psram_mb": 0,
+  "display": {
+    "width": 240,
+    "height": 135,
+    "controller": "ST7789V2",
+    "bus": "spi",
+    "interface": "SPI",
+    "color_depth_bits": 16,
+    "cgram_offset": 1,
+    "notes": "240x135 landscape (rotation 1). ST7789V2 variant/CGRAM offset/pins differ from es3c28p host (needs-runtime-host)."
+  },
+  "touch_input": {
+    "type": "keyboard",
+    "controller": null,
+    "bus": "gpio-matrix",
+    "i2c_addr": null,
+    "keyboard": "56-key matrix via 74HC138 select GPIO 8,9,11 and 7 input GPIO 13,15,3,4,5,6,7",
+    "notes": "No capacitive touch (hasTouch=false). Matrix keyboard not modeled (needs-runtime-host)."
+  },
+  "audio": {
+    "codec": null,
+    "codec_i2c_addr": null,
+    "bus": "i2s/speaker+mic (board caps)",
+    "notes": "Speaker/mic present per board; conditional(version/tool)."
+  },
+  "storage": {
+    "flash_fs": "LittleFS, custom partitions_cardputer.csv (KryonOS v3)",
+    "sd": "SD SPI (separate HSPI in code), MISO39 MOSI14 SCLK40 CS12",
+    "sd_emulation": "conditional(version/tool): esp-emu 1.1.0 --sd (ESP32-S3 SDMMC); board wiring not verified",
+    "notes": "SD SPI wiring not verified on esp-emu 1.1.0 (--sd is the S3 SDMMC path)."
+  },
+  "cosim_board_json_suggested": null,
+  "firmware_presets": {
+    "local": {
+      "merged": null,
+      "elf": null,
+      "env": null,
+      "use_elf_default": false,
+      "notes": "No dedicated local emu env in repo docs."
+    },
+    "kryonos_v3": {
+      "merged": "simulator/emu/firmware/kryonos-v3/m5stack-cardputer/merged.bin",
+      "elf": null,
+      "env": null,
+      "use_elf_default": false,
+      "notes": "Release split assets @0x0/0x8000/0x10000. No ELF."
+    }
+  },
+  "pins": {
+    "lcd_spi": { "mosi": 35, "sclk": 36, "dc": 34, "rst": 33, "cs": 37, "bl": 38 },
+    "keyboard_matrix": { "select_74hc138": [8, 9, 11], "inputs": [13, 15, 3, 4, 5, 6, 7] },
+    "sd_spi": { "miso": 39, "mosi": 14, "sclk": 40, "cs": 12 },
+    "battery": { "adc": 10, "divider": "2x (code note)" },
+    "ir": "present on hardware (variant dependent, uncertain pin details in prep extract)",
+    "notes": "From KryonOS v3.0.0 prep (cardputer.ini/BoardConfig)."
+  },
+  "support": {
+    "serial_headless_release_v3": "conditional(version/tool)",
+    "display_spi_live": "needs-runtime-host",
+    "keyboard_matrix": "needs-runtime-host",
+    "audio_i2s_wav": "conditional(version/tool)",
+    "sdmmc_emu": "conditional(version/tool)",
+    "cosim_in_process": "needs-runtime-host",
+    "cosim_tcp_external": "conditional(version/tool)",
+    "parallel_display": "n/a"
+  },
+  "notes": [
+    "Flash/PSRAM sizing follows m5stack-stamps3 PlatformIO board def; verify with pio envdump when building locally. esp-emu may need matching --psram-size if firmware expects PSRAM.",
+    "UI possible only after host parameterization for 240x135/ST7789V2/CGRAM.",
+    "Primary input is keyboard matrix (no touch)."
+  ]
+}

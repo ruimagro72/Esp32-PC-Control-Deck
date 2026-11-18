@@ -1,0 +1,73 @@
+{
+  "id": "esp32-s3-devkitc-1-n16r8",
+  "name": "ESP32-S3-DevKitC-1 N16R8",
+  "mcu": "esp32s3",
+  "flash_mb": 16,
+  "psram_mb": 8,
+  "display": {
+    "width": 240,
+    "height": 320,
+    "controller": "ILI9341",
+    "bus": "spi",
+    "interface": "SPI (HSPI, KryonOS v3 common setup)",
+    "color_depth_bits": 16,
+    "notes": "External/module-dependent in general; KryonOS v3 config: 240x320 ILI9341 SPI. Live display needs-runtime-host; pins differ from es3c28p compiled host."
+  },
+  "touch_input": {
+    "type": "touch",
+    "controller": "XPT2046 (resistive, SPI)",
+    "bus": "spi",
+    "i2c_addr": null,
+    "keyboard": null,
+    "notes": "XPT2046 SPI/bitbang model not implemented in current host (matrix: needs-runtime-host). DevKit is generic; exact module may vary."
+  },
+  "audio": {
+    "codec": null,
+    "codec_i2c_addr": null,
+    "bus": "i2s (firmware/board dependent)",
+    "notes": "No dedicated board audio/I2S pins in KryonOS v3 env flags shown; conditional(version/tool)."
+  },
+  "storage": {
+    "flash_fs": "Partition layout per firmware (KryonOS v3 split @0x0/0x8000/0x10000; FS depends on build)",
+    "sd": "SD via FileSystem::mountSD() abstraction (KryonOS v3; exact pins not in env flags)",
+    "sd_emulation": "conditional(version/tool): esp-emu 1.1.0 --sd (ESP32-S3 SDMMC); board wiring not verified",
+    "notes": "SD card: esp-emu 1.1.0 --sd only; this board wiring is not verified."
+  },
+  "cosim_board_json_suggested": null,
+  "firmware_presets": {
+    "local": {
+      "merged": null,
+      "elf": null,
+      "env": null,
+      "use_elf_default": false,
+      "notes": "No dedicated local emu env defined for this board in repo docs; use custom or build as applicable."
+    },
+    "kryonos_v3": {
+      "merged": "simulator/emu/firmware/kryonos-v3/esp32-s3-devkitc-1-n16r8/merged.bin",
+      "elf": null,
+      "env": null,
+      "use_elf_default": false,
+      "notes": "Release split assets (bootloader/partitions/firmware @0x0/0x8000/0x10000). No ELF in release."
+    }
+  },
+  "pins": {
+    "lcd_spi_kryonos_v3": { "mosi": 11, "miso": 13, "sclk": 12, "cs": 10, "dc": 9, "rst": 8, "bl": 21 },
+    "touch_spi_kryonos_v3": { "cs": 7, "clk": 4, "din": 5, "do": 6, "irq": 14 },
+    "notes": "Pins from KryonOS v3.0.0 prep (platformio/HAL). DevKit hardware may vary; confirm for specific module."
+  },
+  "support": {
+    "serial_headless_release_v3": "conditional(version/tool)",
+    "display_spi_live": "needs-runtime-host",
+    "touch_xpt2046": "needs-runtime-host",
+    "audio_i2s_wav": "conditional(version/tool)",
+    "sdmmc_emu": "conditional(version/tool)",
+    "cosim_in_process": "needs-runtime-host",
+    "cosim_tcp_external": "conditional(version/tool)",
+    "parallel_display": "n/a"
+  },
+  "notes": [
+    "KryonOS v3 global: ESP32-S3 240MHz, 16MB flash qio, qio_opi/OPI PSRAM, USB CDC on boot.",
+    "Release binaries lack emu guards (ESP_EMU_SKIP_AUDIO-style); boot may WDT/hang on I2S/SD/ADC.",
+    "Best first candidate for serial boot experiments (prep doc)."
+  ]
+}

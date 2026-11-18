@@ -1,0 +1,81 @@
+{
+  "id": "lilygo-t-deck",
+  "name": "LILYGO T-Deck",
+  "mcu": "esp32s3",
+  "flash_mb": 16,
+  "psram_mb": 8,
+  "display": {
+    "width": 320,
+    "height": 240,
+    "controller": "ST7789",
+    "bus": "spi",
+    "interface": "SPI",
+    "color_depth_bits": 16,
+    "panel_native": "240x320, logical 320x240 rotation 1, inversion on (KryonOS v3)",
+    "notes": "Live display needs-runtime-host; ST7789 pins/res/rotation differ from compiled es3c28p host."
+  },
+  "touch_input": {
+    "type": "touch+keyboard+trackball",
+    "controller": "GT911",
+    "bus": "i2c",
+    "i2c_addr": "0x5D (alt 0x14)",
+    "keyboard": "ESP32-C3 keyboard coprocessor I2C 0x55, KB INT GPIO46",
+    "trackball": "5-way UP3 DOWN15 LEFT1 RIGHT2 CLICK0",
+    "notes": "GT911 protocol/registers differ from FT6336; regfile/host needs extension (needs-runtime-host). Keyboard/trackball not modeled."
+  },
+  "audio": {
+    "codec": null,
+    "codec_i2c_addr": null,
+    "bus": "i2s (speaker/mic per board caps)",
+    "notes": "I2S/speaker present in board caps (KryonOS v3); conditional(version/tool)."
+  },
+  "storage": {
+    "flash_fs": "Partition layout per firmware",
+    "sd": "MicroSD SPI on shared display bus, SD CS 39 (MISO38 MOSI41 SCLK40)",
+    "sd_emulation": "conditional(version/tool): esp-emu 1.1.0 --sd (ESP32-S3 SDMMC); board wiring not verified",
+    "notes": "LoRa CS held high GPIO9 (bus isolation) per KryonOS v3 notes."
+  },
+  "cosim_board_json_suggested": null,
+  "firmware_presets": {
+    "local": {
+      "merged": null,
+      "elf": null,
+      "env": null,
+      "use_elf_default": false,
+      "notes": "No dedicated local emu env in repo docs."
+    },
+    "kryonos_v3": {
+      "merged": "simulator/emu/firmware/kryonos-v3/lilygo-t-deck/merged.bin",
+      "elf": null,
+      "env": null,
+      "use_elf_default": false,
+      "notes": "Release split assets @0x0/0x8000/0x10000. No ELF."
+    }
+  },
+  "pins": {
+    "lcd_spi": { "mosi": 41, "miso": 38, "sclk": 40, "cs": 12, "dc": 11, "rst": -1, "bl": 42 },
+    "touch_i2c_gt911": { "sda": 18, "scl": 8, "int": 16, "addr": "0x5D", "addr_alt": "0x14" },
+    "keyboard_i2c": { "addr": "0x55", "int": 46 },
+    "trackball": { "up": 3, "down": 15, "left": 1, "right": 2, "click": 0 },
+    "sd_spi": { "cs": 39, "miso": 38, "mosi": 41, "sclk": 40 },
+    "power_misc": { "board_poweron": 10, "battery_adc": 4, "lora_cs": 9 },
+    "gps_uart_tdeck_plus": { "rx": 44, "tx": 43, "baud_default": 38400 },
+    "notes": "From KryonOS v3.0.0 prep (t_deck.ini/BoardConfig). GPS/LoRa variants exist; validate per hardware."
+  },
+  "support": {
+    "serial_headless_release_v3": "conditional(version/tool)",
+    "display_spi_live": "needs-runtime-host",
+    "touch_gt911": "needs-runtime-host",
+    "keyboard_trackball": "needs-runtime-host",
+    "audio_i2s_wav": "conditional(version/tool)",
+    "sdmmc_emu": "conditional(version/tool)",
+    "cosim_in_process": "needs-runtime-host",
+    "cosim_tcp_external": "conditional(version/tool)",
+    "parallel_display": "n/a"
+  },
+  "notes": [
+    "Closest input model type to es3c28p (I2C touch) but different controller (GT911).",
+    "May hang/behave oddly without keyboard coprocessor/trackball/GPS models.",
+    "Touch mapping flags in KryonOS v3: SWAP_XY=1, INV_Y=1 (config-specific)."
+  ]
+}

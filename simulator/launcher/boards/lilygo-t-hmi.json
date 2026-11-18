@@ -1,0 +1,77 @@
+{
+  "id": "lilygo-t-hmi",
+  "name": "LILYGO T-HMI",
+  "mcu": "esp32s3",
+  "flash_mb": 16,
+  "psram_mb": 8,
+  "display": {
+    "width": 240,
+    "height": 320,
+    "controller": "ST7789",
+    "bus": "parallel",
+    "interface": "8-bit parallel (TFT_PARALLEL_8_BIT)",
+    "color_depth_bits": 16,
+    "notes": "No parallel transport/consumer in current stack; live display needs-runtime-host (major gap). Rotation 0, TFT_BGR, inversion off (KryonOS v3)."
+  },
+  "touch_input": {
+    "type": "touch",
+    "controller": "XPT2046 (resistive)",
+    "bus": "spi/bitbang",
+    "i2c_addr": null,
+    "keyboard": null,
+    "notes": "XPT2046 model not implemented in current host (needs-runtime-host). Raw cal ranges in KryonOS v3 config."
+  },
+  "audio": {
+    "codec": null,
+    "codec_i2c_addr": null,
+    "bus": "unknown/firmware dependent",
+    "notes": "No keyboard/trackball; WiFi/BLE per S3 firmware. Audio details not specified in prep extract (mark uncertain).",
+    "uncertain": true
+  },
+  "storage": {
+    "flash_fs": "Partition layout per firmware (default_16MB noted in source context)",
+    "sd": "SD_MMC 1-bit (CLK12 CMD11 D0/MISO13)",
+    "sd_emulation": "conditional(version/tool): esp-emu 1.1.0 --sd (ESP32-S3 SDMMC); board wiring not verified",
+    "notes": "SDMMC 1-bit wiring not verified on esp-emu 1.1.0 --sd."
+  },
+  "cosim_board_json_suggested": null,
+  "firmware_presets": {
+    "local": {
+      "merged": null,
+      "elf": null,
+      "env": null,
+      "use_elf_default": false,
+      "notes": "No dedicated local emu env in repo docs."
+    },
+    "kryonos_v3": {
+      "merged": "simulator/emu/firmware/kryonos-v3/lilygo-t-hmi/merged.bin",
+      "elf": null,
+      "env": null,
+      "use_elf_default": false,
+      "notes": "Release split assets @0x0/0x8000/0x10000. No ELF."
+    }
+  },
+  "pins": {
+    "lcd_parallel_8bit": { "cs": 6, "dc": 7, "rst": -1, "wr": 8, "rd": -1, "bl": 38, "d0": 48, "d1": 47, "d2": 39, "d3": 40, "d4": 41, "d5": 42, "d6": 45, "d7": 46 },
+    "touch_xpt2046": { "sclk": 1, "miso": 4, "mosi": 3, "cs": 2, "irq": 9 },
+    "touch_cal_kryonos_v3": { "x_min": 290, "x_max": 1500, "y_min": 215, "y_max": 1800 },
+    "power": { "pwr_en": 10, "pwr_on": 14, "battery_adc": 5 },
+    "sd_mmc_1bit": { "clk": 12, "cmd": 11, "d0": 13 },
+    "notes": "From KryonOS v3.0.0 prep (t_hmi.ini/BoardConfig)."
+  },
+  "support": {
+    "serial_headless_release_v3": "conditional(version/tool)",
+    "display_parallel_live": "needs-runtime-host",
+    "touch_xpt2046": "needs-runtime-host",
+    "audio_i2s_wav": "conditional(version/tool)",
+    "sdmmc_emu": "conditional(version/tool)",
+    "cosim_in_process": "needs-runtime-host",
+    "cosim_tcp_external": "conditional(version/tool)",
+    "parallel_display": "needs-runtime-host"
+  },
+  "notes": [
+    "Highest gap for visual emulation: parallel LCD + bitbanged XPT2046 + SDMMC 1-bit.",
+    "Start headless only until parallel consumer/model exists.",
+    "Release binaries may WDT/hang on peripheral init without emu guards."
+  ]
+}

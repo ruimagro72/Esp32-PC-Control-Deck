@@ -1,0 +1,1501 @@
+# Portuguese translation of the ESP32 Simulator launcher (sim_launcher).
+# Compile: msgfmt -o locale/pt/LC_MESSAGES/sim_launcher.mo po/pt.po (done by build.sh).
+msgid ""
+msgstr ""
+"Project-Id-Version: sim_launcher\n"
+"Language: pt\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "[profile] failed to save %s"
+msgstr "[profile] falha ao guardar %s"
+
+msgid "[profile] saved: %s%s"
+msgstr "[profile] guardado: %s%s"
+
+msgid " (active)"
+msgstr " (ativo)"
+
+msgid "# error building effective command"
+msgstr "# erro ao construir comando efetivo"
+
+msgid "• SDMMC S3: --sd supported in esp-emu 1.1.0 (Card menu)\n"
+msgstr "• SDMMC S3: --sd suportado no esp-emu 1.1.0 (menu Cartão)\n"
+
+msgid "• Merge wizard: esptool merge-bin, dry-run and merge (conditional)\n"
+msgstr "• Assistente de merge: esptool merge-bin, dry-run e merge (condicional)\n"
+
+msgid "• Run modes and log filter/export: done\n"
+msgstr "• Modos de execução e filtro/export de logs: concluído\n"
+
+msgid "SD card image not found (esp-emu 1.1.0 supports --sd)"
+msgstr "Imagem do cartão SD não encontrada (esp-emu 1.1.0 suporta --sd)"
+
+msgid "Card > Build image from folder… or ./start.sh card image"
+msgstr "Cartão > Construir imagem a partir de pasta… ou ./start.sh card image"
+
+msgid "Parallel display needs runtime host/dedicated model (needs-runtime-host)"
+msgstr "Display paralelo requer runtime host/modelo dedicado (needs-runtime-host)"
+
+msgid "Prefer serial/headless"
+msgstr "Preferir serial/headless"
+
+msgid "Live display depends on cosim/runtime host and compiled pins/resolution"
+msgstr "Display live depende de cosim/runtime host e pinos/resolução compilados"
+
+msgid "Check board JSON, transport and runtime limits"
+msgstr "Validar board JSON, transporte e limites runtime"
+
+msgid "Wi-Fi visible but conditional(version/tool/fw)"
+msgstr "Wi-Fi visível mas conditional(version/tool/fw)"
+
+msgid "Check args/firmware/support"
+msgstr "Validar args/firmware/suporte"
+
+msgid "BLE visible but conditional(version/tool), usually needs ELF/HCI"
+msgstr "BLE visível mas conditional(version/tool), geralmente requer ELF/HCI"
+
+msgid "Check support/args/ELF"
+msgstr "Validar suporte/args/ELF"
+
+msgid "Realtime audio conditional(version/tool)"
+msgstr "Áudio realtime conditional(version/tool)"
+
+msgid "Prefer I2S WAV from file"
+msgstr "Preferir I2S WAV por ficheiro"
+
+msgid "[launcher] pre-start validation FAILED (blocking errors). Start aborted."
+msgstr "[launcher] pre-start validation FAILED (blocking errors). Start abortado."
+
+msgid "[launcher] pre-start validation OK (see warnings in the Validation panel)."
+msgstr "[launcher] pre-start validation OK (ver avisos no painel Validação)."
+
+msgid "(no diagnostics)\n"
+msgstr "(sem diagnósticos)\n"
+
+msgid "gpio snapshot hook not connected to runtime"
+msgstr "gpio snapshot hook não ligado ao runtime"
+
+msgid "regs snapshot hook not connected to runtime"
+msgstr "regs snapshot hook não ligado ao runtime"
+
+msgid "mem snapshot hook not connected to runtime"
+msgstr "mem snapshot hook não ligado ao runtime"
+
+msgid "perf hook not connected to runtime"
+msgstr "perf hook não ligado ao runtime"
+
+msgid "cycles unavailable without runtime host"
+msgstr "cycles indisponível sem runtime host"
+
+msgid "mips unavailable without runtime host"
+msgstr "mips indisponível sem runtime host"
+
+msgid "trace configured (--trace)"
+msgstr "trace configurado (--trace)"
+
+msgid "trace not active"
+msgstr "trace não ativo"
+
+msgid "GDB stub configured (--gdb)"
+msgstr "GDB stub configurado (--gdb)"
+
+msgid "GDB not active"
+msgstr "GDB não ativo"
+
+msgid "esp-emu 1.1.0 + ELF recommended"
+msgstr "esp-emu 1.1.0 + ELF recomendado"
+
+msgid "sd: ejected (%.80s)"
+msgstr "sd: ejetado (%.80s)"
+
+msgid "sd: %.80s (missing)"
+msgstr "sd: %.80s (em falta)"
+
+msgid "Board"
+msgstr "Placa"
+
+msgid "Display"
+msgstr "Ecrã"
+
+msgid "SD card"
+msgstr "Cartão SD"
+
+msgid "Network/Wi-Fi/BLE"
+msgstr "Rede/Wi-Fi/BLE"
+
+msgid "Audio"
+msgstr "Áudio"
+
+msgid "Console/UART"
+msgstr "Consola/UART"
+
+msgid "(none)"
+msgstr "(nenhum)"
+
+msgid "%dx%d  ·  rotation %d  ·  scale %d"
+msgstr "%dx%d  ·  rotação %d  ·  escala %d"
+
+msgid "off (--no-elf)"
+msgstr "desligado (--no-elf)"
+
+msgid "off"
+msgstr "desligado"
+
+msgid "Network"
+msgstr "Rede"
+
+msgid "Ready to start"
+msgstr "Pronto para iniciar"
+
+msgid "Backend running (no canvas)"
+msgstr "Backend em execução (sem canvas)"
+
+msgid "Starting…"
+msgstr "A iniciar…"
+
+msgid "attached(canvas), cosim connecting"
+msgstr "attached(canvas), cosim a ligar"
+
+msgid "waiting for canvas"
+msgstr "a aguardar o canvas"
+
+msgid "backend-only (--no-host, no embed)"
+msgstr "backend-only (--no-host, sem embed)"
+
+msgid "ui+embedded host (sim_host/SDL in GTK X11)"
+msgstr "ui+embedded host (sim_host/SDL em GTK X11)"
+
+msgid "attached, cosim connecting"
+msgstr "attached, cosim a ligar"
+
+msgid "cosim connecting…"
+msgstr "cosim a ligar…"
+
+msgid "stopped"
+msgstr "parado"
+
+msgid "external/conditional"
+msgstr "externo/conditional"
+
+msgid "(no profile)"
+msgstr "(sem perfil)"
+
+msgid "profile: %s%s · %s%s · %s%s · esp-emu %s%s · %s"
+msgstr "perfil: %s%s · %s%s · %s%s · esp-emu %s%s · %s"
+
+msgid "[profile] error loading '%s'"
+msgstr "[profile] erro ao carregar '%s'"
+
+msgid "[profile] loaded: %s%s"
+msgstr "[profile] carregado: %s%s"
+
+msgid "New profile"
+msgstr "Novo perfil"
+
+msgid "[profile] new profile created (defaults). Adjust, then use Save/Save as."
+msgstr "[profile] novo perfil criado (defaults). Ajuste e use Guardar/Guardar como."
+
+msgid "[profile] duplicated to: %s (active)"
+msgstr "[profile] duplicado para: %s (ativo)"
+
+msgid "[profile] failed to duplicate to: %s"
+msgstr "[profile] falha ao duplicar para: %s"
+
+msgid "[profile] error importing launcher.conf: %s"
+msgstr "[profile] erro ao importar launcher.conf: %s"
+
+msgid "[profile] imported/migrated from %s to active profile '%s' (use Save to persist the JSON)"
+msgstr "[profile] importado/migrado de %s para perfil ativo '%s' (use Guardar para persistir JSON)"
+
+msgid "[profile] exported to: %s (active profile kept: %s)"
+msgstr "[profile] exportado para: %s (perfil ativo mantido: %s)"
+
+msgid "[profile] failed to export to: %s"
+msgstr "[profile] falha ao exportar para: %s"
+
+msgid "[launcher] preflight/validation updated"
+msgstr "[launcher] preflight/validação atualizada"
+
+msgid "[launcher] effective command copied"
+msgstr "[launcher] comando efetivo copiado"
+
+msgid "[caps] probe failed/incomplete (binary/args may be unavailable; conditional)"
+msgstr "[caps] probe falhou/incompleto (binário/args podem não estar disponíveis; conditional)"
+
+msgid "Export logs (text)"
+msgstr "Exportar logs (texto)"
+
+msgid "[logs] exported (filtered)"
+msgstr "[logs] exportado (filtered)"
+
+msgid "[logs] failed to export"
+msgstr "[logs] falha ao exportar"
+
+msgid "SD card is not part of the merged image: esp-emu 1.1.0 mounts it with --sd (Card menu)."
+msgstr "Cartão SD não faz parte da imagem fundida: o esp-emu 1.1.0 monta-o com --sd (menu Cartão)."
+
+msgid "[merge] merged output created/updated"
+msgstr "[merge] merged output criado/atualizado"
+
+msgid "Failed to discover parts in '%s'"
+msgstr "Falha ao descobrir parts em '%s'"
+
+msgid "Discovered %d part(s) in '%s'"
+msgstr "Descobertas %d part(s) em '%s'"
+
+msgid "No part selected/named"
+msgstr "Sem part selecionada/nomeada"
+
+msgid "configured (cosim runtime pending)"
+msgstr "configurada (cosim runtime pendente)"
+
+msgid "Instance '%s' configured for part '%s' (needs-runtime-host)"
+msgstr "Instância '%s' configurada para part '%s' (needs-runtime-host)"
+
+msgid "Instance removed: %s"
+msgstr "Instância removida: %s"
+
+msgid "Instance not found"
+msgstr "Instância não encontrada"
+
+msgid "Validation passed with no errors (conflicts/capabilities checked)"
+msgstr "Validação sem erros (conflitos/capabilities verificados)"
+
+msgid "Validation found errors/conflicts"
+msgstr "Validação encontrou erros/conflitos"
+
+msgid "Cosim runtime integration: placeholder (needs-runtime-host / conditional esp-emu)."
+msgstr "Integração cosim runtime: placeholder (needs-runtime-host / conditional esp-emu)."
+
+msgid "Select merged firmware"
+msgstr "Selecionar firmware merged"
+
+msgid "Select ELF"
+msgstr "Selecionar ELF"
+
+msgid "Select cosim board JSON"
+msgstr "Selecionar cosim board JSON"
+
+msgid "Select/set the profile JSON path"
+msgstr "Selecionar/definir caminho do perfil JSON"
+
+msgid "Select LittleFS image"
+msgstr "Selecionar imagem LittleFS"
+
+msgid "Select I2S audio out (WAV)"
+msgstr "Selecionar áudio I2S out (WAV)"
+
+msgid "Select I2S audio in (WAV)"
+msgstr "Selecionar áudio I2S in (WAV)"
+
+msgid "Select esp-emu (capabilities probe)"
+msgstr "Selecionar esp-emu (probe de capacidades)"
+
+msgid "Select trace file"
+msgstr "Selecionar ficheiro de trace"
+
+msgid "Open/Load profile JSON"
+msgstr "Abrir/Carregar perfil JSON"
+
+msgid "Save profile as..."
+msgstr "Guardar perfil como..."
+
+msgid "Duplicate profile to..."
+msgstr "Duplicar perfil para..."
+
+msgid "Import/migrate launcher.conf"
+msgstr "Importar/migrar launcher.conf"
+
+msgid "Export profile JSON"
+msgstr "Exportar perfil JSON"
+
+msgid "[workflow] file opened"
+msgstr "[workflow] ficheiro aberto"
+
+msgid "[workflow] open failed (give a valid path)"
+msgstr "[workflow] abrir falhou (indique caminho válido)"
+
+msgid "[workflow] file saved"
+msgstr "[workflow] ficheiro guardado"
+
+msgid "[workflow] save failed"
+msgstr "[workflow] guardar falhou"
+
+msgid "[workflow] build finished"
+msgstr "[workflow] build terminado"
+
+msgid "Build finished (see logs). Tools/exit depend on the environment."
+msgstr "Build terminado (ver logs). Tools/exit condicionais ao ambiente."
+
+msgid "[workflow] running build..."
+msgstr "[workflow] a executar build..."
+
+msgid "Running: build via start.sh (conditional: toolchain present)"
+msgstr "A executar: build via start.sh (conditional: toolchain presente)"
+
+msgid "[workflow] failed to start build (tool missing?)"
+msgstr "[workflow] falha ao iniciar build (ferramenta ausente?)"
+
+msgid "[card] emulator running: controlled restart to apply the card"
+msgstr "[card] emulador em execução: reinício controlado para aplicar o cartão"
+
+msgid "Replace SD card image (restarts the emulator)"
+msgstr "Substituir imagem do cartão SD (reinicia o emulador)"
+
+msgid "Images (*.img)"
+msgstr "Imagens (*.img)"
+
+msgid "All files"
+msgstr "Todos os ficheiros"
+
+msgid "[card] image replaced: %s"
+msgstr "[card] imagem substituída: %s"
+
+msgid "[card] card ejected (--no-sd on next start)"
+msgstr "[card] cartão ejetado (--no-sd no próximo arranque)"
+
+msgid "[card] finished (%s, state %d)"
+msgstr "[card] terminado (%s, estado %d)"
+
+msgid "[card] another build/card process is still running"
+msgstr "[card] outro processo de build/cartão ainda em execução"
+
+msgid "[card] failed to start start.sh card"
+msgstr "[card] falha ao iniciar start.sh card"
+
+msgid "Stop the emulator before rebuilding the card image (the image is mounted by esp-emu)."
+msgstr "Pare o emulador antes de reconstruir a imagem do cartão (a imagem está montada pelo esp-emu)."
+
+msgid "Folder with the card contents"
+msgstr "Pasta com o conteúdo do cartão"
+
+msgid "Building the image from a folder REPLACES the image %s.\nWhat the firmware wrote to the card is lost. Continue?"
+msgstr "Construir imagem a partir de pasta SUBSTITUI a imagem %s.\nO conteúdo que o firmware escreveu no cartão perde-se. Continuar?"
+
+msgid "Destination folder for extracting the card"
+msgstr "Pasta de destino para extrair o cartão"
+
+msgid "[card] could not open simulator/SD_Card (xdg-open)"
+msgstr "[card] não foi possível abrir simulator/SD_Card (xdg-open)"
+
+msgid "PROFILE / FIRMWARE"
+msgstr "PERFIL / FIRMWARE"
+
+msgid "RUNTIME / AUDIO / NETWORK"
+msgstr "RUNTIME / ÁUDIO / REDE"
+
+msgid "ESP32 Simulator (Unified)\nGTK3 front-end for esp-emu: profile/config, embedded canvas (sim_host/SDL) and SD card."
+msgstr "ESP32 Simulator (Unified)\nFront-end GTK3 do esp-emu: perfil/config, canvas embebido (sim_host/SDL) e cartão SD."
+
+msgid "Debug/Profiler (available data, factual)\n"
+msgstr "Debug/Profiler (dados disponíveis, factual)\n"
+
+msgid "configured (--gdb, conditional esp-emu+ELF+gdb)"
+msgstr "configurado (--gdb, conditional esp-emu+ELF+gdb)"
+
+msgid "inactive"
+msgstr "inativo"
+
+msgid "configured (--trace, conditional)"
+msgstr "configurado (--trace, conditional)"
+
+msgid "Process: running=%s pid=%d uptime=%llums\n"
+msgstr "Processo: running=%s pid=%d uptime=%llums\n"
+
+msgid "Process: unavailable\n"
+msgstr "Processo: indisponível\n"
+
+msgid "Limits: GPIO/regs/mem/perf/cycles/mips/PC-level live = needs-runtime-host (hooks not connected to the runtime).\n"
+msgstr "Limites: GPIO/regs/mem/perf/cycles/mips/PC-level live = needs-runtime-host (hooks não ligados ao runtime).\n"
+
+msgid "sdmmc S3: --sd supported in esp-emu 1.1.0. ELF/trace/gdb = conditional(version/tool).\n"
+msgstr "sdmmc S3: --sd suportado no esp-emu 1.1.0. ELF/trace/gdb = conditional(version/tool).\n"
+
+msgid "GPIO/Pins/Claims (available state)\n"
+msgstr "GPIO/Pins/Claims (estado disponível)\n"
+
+msgid "Dynamic mappings of pins/bus/controllers/protocols/input: conditional/needs-runtime-host (compile-time/partial runtime host).\n"
+msgstr "Mapeamentos dinâmicos pinos/bus/controladores/protocolos/input: conditional/needs-runtime-host (compile-time/runtime host parcial).\n"
+
+msgid "Live GPIO telemetry/runtime claims not connected (hook missing).\n"
+msgstr "Telemetria GPIO live/claims runtime não ligada (hook ausente).\n"
+
+msgid "• board metadata unavailable\n"
+msgstr "• board metadata indisponível\n"
+
+msgid "badges: board metadata unavailable"
+msgstr "badges: board metadata indisponível"
+
+msgid "telemetry: (unavailable)"
+msgstr "telemetry: (indisponível)"
+
+msgid "Profile"
+msgstr "Perfil"
+
+msgid "Audio · Network"
+msgstr "Áudio · Rede"
+
+msgid "Merge · Run modes"
+msgstr "Merge · Modos de execução"
+
+msgid "Active profile (JSON)"
+msgstr "Perfil ativo (JSON)"
+
+msgid "Profile/Firmware"
+msgstr "Perfil/Firmware"
+
+msgid "Runtime/Audio/Network"
+msgstr "Runtime/Áudio/Rede"
+
+msgid "Firmware selection"
+msgstr "Seleção firmware"
+
+msgid "Merged firmware"
+msgstr "Firmware merged"
+
+msgid "Use ELF (--elf)"
+msgstr "Usar ELF (--elf)"
+
+msgid "extra args for esp-emu (after --)"
+msgstr "extra args para esp-emu (após --)"
+
+msgid "Audio enabled"
+msgstr "Áudio enabled"
+
+msgid "Realtime audio (conditional)"
+msgstr "Áudio realtime (conditional)"
+
+msgid "Audio out path"
+msgstr "Áudio out path"
+
+msgid "Audio in path"
+msgstr "Áudio in path"
+
+msgid "SD (legacy: use the Card menu)"
+msgstr "SD (legado: use o menu Cartão)"
+
+msgid "Custom firmware path (legacy)"
+msgstr "Custom firmware path (legado)"
+
+msgid "esp-emu path (basic)"
+msgstr "esp-emu path (básico)"
+
+msgid "Merge wizard and profile import/export"
+msgstr "Assistente de merge e import/export de perfil"
+
+msgid "Structure ready for the merge wizard (boot/part/app/fs, offsets, esptool dry-run) and profile import/export."
+msgstr "Estrutura preparada para wizard de merge (boot/part/app/fs, offsets, dry-run esptool) e import/export de perfil."
+
+msgid "Open merge wizard"
+msgstr "Abrir wizard de merge"
+
+msgid "Run modes and advanced logs"
+msgstr "Modos de execução e logs avançados"
+
+msgid "Basic telemetry is in the Processes/Telemetry tabs. Run modes and advanced filters: planned."
+msgstr "A telemetria básica está nos separadores Processos/Telemetria. Modos de execução e filtros avançados: previstos."
+
+msgid "Run mode and backend-only/--no-host are available in Runtime/Audio/Network. Log filters/export are available in the log panel."
+msgstr "Run mode e backend-only/--no-host disponíveis em Runtime/Áudio/Rede. Filtros/export de logs disponíveis no painel de logs."
+
+msgid "Check conflicts"
+msgstr "Validar conflitos"
+
+msgid "part name (empty=1st)"
+msgstr "part name (vazio=1ª)"
+
+msgid "Validation/Capabilities"
+msgstr "Validação/Capabilities"
+
+msgid "Effective command"
+msgstr "Comando efetivo"
+
+msgid "Processes/Telemetry"
+msgstr "Processos/Telemetria"
+
+msgid "GPIO/Pins (state)"
+msgstr "GPIO/Pins (estado)"
+
+msgid "file to open/edit (optional)"
+msgstr "arquivo para abrir/editar (opcional)"
+
+msgid "Open"
+msgstr "Abrir"
+
+msgid "Save"
+msgstr "Guardar"
+
+msgid "File:"
+msgstr "Ficheiro:"
+
+msgid "Code/Build/Run"
+msgstr "Código/Build/Run"
+
+msgid "Effective configuration of the active profile"
+msgstr "Configuração efetiva do perfil ativo"
+
+msgid "Telemetry is integrated in 'Processes/Telemetry'. Filters/export apply to the unified buffer (console_log)."
+msgstr "Telemetria integrada em 'Processos/Telemetria'. Filtros/export aplicam-se ao buffer unificado (console_log)."
+
+msgid "text filter (substring)"
+msgstr "filtro texto (substring)"
+
+msgid "Release without ELF: use --no-elf; reduces symbols/BLE intercepts/hooks/debug (conditional)."
+msgstr "Release sem ELF: usar --no-elf; reduz símbolos/interceções BLE/hooks/debug (conditional)."
+
+msgid "Wi-Fi: conditional(version/tool/fw). Visible in the UI; the full flow depends on support/args/firmware."
+msgstr "Wi-Fi: conditional(version/tool/fw). Visível na UI, fluxo completo depende de suporte/args/firmware."
+
+msgid "BLE: conditional(version/tool). Usually needs external ELF/HCI; not guaranteed."
+msgstr "BLE: conditional(version/tool). Geralmente requer ELF/HCI externo; não garantido."
+
+msgid "Realtime audio: conditional(version/tool). Prefer I2S WAV from file when applicable."
+msgstr "Áudio realtime: conditional(version/tool). Preferir I2S WAV por ficheiro quando aplicável."
+
+msgid "LittleFS conditional (image/layout). SD: Card menu (esp-emu 1.1.0 --sd)."
+msgstr "LittleFS conditional (imagem/layout). SD: menu Cartão (esp-emu 1.1.0 --sd)."
+
+msgid "Optional LittleFS image. SD: Card menu (esp-emu 1.1.0 --sd)."
+msgstr "Imagem LittleFS opcional. SD: menu Cartão (esp-emu 1.1.0 --sd)."
+
+msgid "Pins/resolution/panel largely compiled (panel_config.h/lcd_touch_host.c). Partial runtime override."
+msgstr "Pinos/resolução/painel em grande parte compilados (panel_config.h/lcd_touch_host.c). Override runtime parcial."
+
+msgid "Cosim: --cosim-board in-process preferred; TCP/unix/bridge conditional on version/host."
+msgstr "Cosim: --cosim-board in-process preferido; TCP/unix/bridge condicionais por versão/host."
+
+msgid "Extra args passed to esp-emu (unknown flags may fail)."
+msgstr "Extra args repassados ao esp-emu (flags desconhecidas podem falhar)."
+
+msgid "_Profile"
+msgstr "_Perfil"
+
+msgid "New"
+msgstr "Novo"
+
+msgid "Open…"
+msgstr "Abrir…"
+
+msgid "Save as…"
+msgstr "Guardar como…"
+
+msgid "Duplicate"
+msgstr "Duplicar"
+
+msgid "Import conf"
+msgstr "Importar conf"
+
+msgid "Export"
+msgstr "Exportar"
+
+msgid "Quit"
+msgstr "Sair"
+
+msgid "Validate"
+msgstr "Validar"
+
+msgid "Copy command"
+msgstr "Copiar comando"
+
+msgid "_Card"
+msgstr "_Cartão"
+
+msgid "Replace image… (restarts the emulator)"
+msgstr "Substituir imagem… (reinicia o emulador)"
+
+msgid "esp-emu 1.1.0 cannot swap the card while running: if the emulator is running, it is restarted in a controlled way."
+msgstr "O esp-emu 1.1.0 não suporta trocar o cartão durante a execução: se o emulador estiver a correr, é feito um reinício controlado."
+
+msgid "Eject (restarts the emulator)"
+msgstr "Ejectar (reinicia o emulador)"
+
+msgid "Starts without the card (--no-sd). esp-emu 1.1.0 does not remove the card while running: controlled restart."
+msgstr "Arranca sem cartão (--no-sd). O esp-emu 1.1.0 não remove o cartão durante a execução: reinício controlado."
+
+msgid "Build image from folder…"
+msgstr "Construir imagem a partir de pasta…"
+
+msgid "./start.sh card image --force <folder> <image>: REPLACES the image (what the firmware wrote to the card is lost)."
+msgstr "./start.sh card image --force <pasta> <imagem>: SUBSTITUI a imagem (o que o firmware escreveu no cartão perde-se)."
+
+msgid "Extract image to folder…"
+msgstr "Extrair imagem para pasta…"
+
+msgid "Open card folder"
+msgstr "Abrir pasta do cartão"
+
+msgid "_View"
+msgstr "_Ver"
+
+msgid "Configuration panel"
+msgstr "Painel de configuração"
+
+msgid "Bottom panel"
+msgstr "Painel inferior"
+
+msgid "Status bar"
+msgstr "Barra de estado"
+
+msgid "GPIO/Pins window"
+msgstr "Janela de GPIO/Pins"
+
+msgid "Shows the bottom panel on the GPIO/Pins tab"
+msgstr "Mostra o painel inferior no separador GPIO/Pins"
+
+msgid "_Help"
+msgstr "A_juda"
+
+msgid "About"
+msgstr "Sobre"
+
+msgid "▤ Console / Logs"
+msgstr "▤ Consola / Logs"
+
+msgid "Show/hide the bottom panel (validation, command, telemetry, logs)"
+msgstr "Mostra/oculta o painel inferior (validação, comando, telemetria, logs)"
+
+msgid "Simulator → Start (Ctrl+R)"
+msgstr "Simulador → Iniciar (Ctrl+R)"
+
+msgid "Simulator → Stop (Ctrl+.)"
+msgstr "Simulador → Parar (Ctrl+.)"
+
+msgid "Simulator → Restart (Ctrl+Shift+R)"
+msgstr "Simulador → Reiniciar (Ctrl+Shift+R)"
+
+msgid "_Simulator"
+msgstr "_Simulador"
+
+msgid "Parts WASM/sidecar: discovery, claims/wiring, conflicts and capabilities. Status: conditional/needs-runtime-host (no real cosim runtime integration; hooks/placeholders)."
+msgstr "Parts WASM/sidecar: descoberta, claims/wiring, conflitos e capacidades. Estado: conditional/needs-runtime-host (sem integração cosim runtime real; hooks/placeholders)."
+
+msgid "ERROR"
+msgstr "ERRO"
+
+msgid "GPIO unavailable: requires a connected runtime/host"
+msgstr "GPIO indisponivel: requer runtime/host conectado"
+
+msgid "Registers unavailable: requires a connected runtime/host"
+msgstr "Registos indisponiveis: requer runtime/host conectado"
+
+msgid "Memory unavailable: requires a connected runtime/host"
+msgstr "Memoria indisponivel: requer runtime/host conectado"
+
+msgid "Perf unavailable: requires a connected runtime/host"
+msgstr "Perf indisponivel: requer runtime/host conectado"
+
+msgid "Cycles unavailable without instrumentation/an exposed counter"
+msgstr "Ciclos indisponiveis sem instrumentacao/contador exposto"
+
+msgid "MIPS unavailable without an exposed cycle counter"
+msgstr "MIPS indisponivel sem contador de ciclos exposto"
+
+msgid "Chrome trace available with --trace <FILE> + --elf; stream/runtime deep data requires host"
+msgstr "Trace Chrome disponivel com --trace <FILE> + --elf; stream/runtime deep data requer host"
+
+msgid "GDB stub available with --gdb <PORT> [--gdb-halt]; runtime data requires host/client"
+msgstr "GDB stub disponivel com --gdb <PORT> [--gdb-halt]; dados runtime requerem host/cliente"
+
+msgid "Chrome trace configured (--trace) with ELF; file/state observable"
+msgstr "Trace Chrome configurado (--trace) com ELF; ficheiro/estado observavel"
+
+msgid "Trace needs --elf for full context/timeline; runtime stream needs host"
+msgstr "Trace requer --elf para contexto/timeline completo; stream runtime requer host"
+
+msgid "GDB stub configured (--gdb); runtime attach/data needs a GDB client/host"
+msgstr "GDB stub configurado (--gdb); attach/dados runtime requerem cliente GDB/host"
+
+msgid "GPIO deep data unavailable: requires a connected runtime/host"
+msgstr "GPIO deep data indisponivel: requer runtime/host conectado"
+
+msgid "Perf/cycles/MIPS unavailable: requires a connected runtime/host"
+msgstr "Perf/ciclos/MIPS indisponiveis: requer runtime/host conectado"
+
+msgid "Trace configured (file/endpoint observable); runtime deep stream requires host"
+msgstr "Trace configurado (ficheiro/endpoint observavel); stream runtime deep requer host"
+
+msgid "GDB endpoint configured; runtime attach/data requires a client/host"
+msgstr "GDB endpoint configurado; runtime attach/dados requerem cliente/host"
+
+msgid "esp-emu 1.1.0 (S3) with --i2s-wav"
+msgstr "esp-emu 1.1.0 (S3) com --i2s-wav"
+
+msgid "WAV file capture/playback supported; firmware may need correct init"
+msgstr "Captura/reproducao por ficheiro WAV suportada; firmware pode precisar init correto"
+
+msgid "esp-emu version/binary and firmware support"
+msgstr "versao/binario esp-emu e suporte do firmware"
+
+msgid "Flags --i2s-wav-in/--i2s-instance exist in docs/help; check on the real binary/flow"
+msgstr "Flags --i2s-wav-in/--i2s-instance existem em docs/help; validar no binario/fluxo real"
+
+msgid "version/tool (e.g. 1.1+/external cosim) and firmware"
+msgstr "versao/tool (ex. 1.1+/cosim externo) e firmware"
+
+msgid "Realtime PCM not guaranteed on the esp-emu 1.1.0 baseline; may require cosim/tools"
+msgstr "PCM tempo-real nao garantido no baseline esp-emu 1.1.0; pode requerer cosim/tools"
+
+msgid "Hint for UI/log; only --i2s-wav/--i2s-wav-in map to known args"
+msgstr "Hint para UI/log; apenas --i2s-wav/--i2s-wav-in mapeiam para args conhecidos"
+
+msgid "firmware/host/permissions and network backend"
+msgstr "firmware/host/permissoes e backend de rede"
+
+msgid "--net user available in the baseline; STA/AP/services parity depends on firmware/validation"
+msgstr "--net user disponivel no baseline; paridade STA/AP/servicos depende do firmware/validacao"
+
+msgid "esp-emu version, --net user mode and supported rules"
+msgstr "versao esp-emu, modo --net user e regras suportadas"
+
+msgid "hostfwd mapped to --hostfwd when given; check syntax/effect on the binary"
+msgstr "hostfwd mapeado como --hostfwd quando fornecido; validar sintaxe/efeito no binario"
+
+msgid "firmware and esp-emu Wi-Fi flags"
+msgstr "firmware e flags Wi-Fi do esp-emu"
+
+msgid "SSID/pass/auth are placeholders that depend on firmware/flags (--wifi-*); parity not validated"
+msgstr "SSID/pass/auth sao placeholders dependentes do firmware/flags (--wifi-*); paridade nao validada"
+
+msgid "version/tool, --elf for hooks and external HCI (Bumble/adapter)"
+msgstr "versao/tool, --elf para hooks e HCI externo (Bumble/adaptador)"
+
+msgid "Flag --ble-hci present; the full BLE workflow depends on ELF/runtime/host"
+msgstr "Flag --ble-hci presente; workflow BLE completo depende de ELF/runtime/host"
+
+msgid "emu_runtime.esp_emu_path (basic)"
+msgstr "emu_runtime.esp_emu_path (básico)"
+
+msgid "Merge wizard, run modes (UI and backend-only), log filters and export, and the capability, probe, storage, audio and network UI are integrated (partial where conditional or blocked)."
+msgstr "Assistente de merge, modos de execução (UI e apenas backend), filtros e export de logs, e a UI de capacidades, probe, storage, áudio e rede integrados (parcial onde condicional ou bloqueado)."
+
+msgid "Telemetry and parts are integrated in the UI with state and capabilities; deep runtime data and WASM execution depend on the host, the emulator and tools (needs runtime host, conditional)."
+msgstr "Telemetria e parts integrados na UI com estado e capacidades; dados de runtime profundos e execução WASM dependem do host, do emulador e de ferramentas (requer host de runtime, condicional)."
+
+msgid "Limits: SD via --sd (esp-emu 1.1.0, Card menu), release without ELF conditional, pins/resolution partial runtime/compiled."
+msgstr "Limites: SD via --sd (esp-emu 1.1.0, menu Cartão), release sem ELF conditional, pinos/resolução runtime parcial/compilado."
+
+msgid "Close"
+msgstr "Fechar"
+
+msgid "Close panel"
+msgstr "Fechar painel"
+
+msgid "Include FS (LittleFS)"
+msgstr "Incluir FS (LittleFS)"
+
+msgid "Add/Config"
+msgstr "Adicionar/Configurar"
+
+msgid "App"
+msgstr "App"
+
+msgid "audio backend hint"
+msgstr "dica do backend de áudio"
+
+msgid "Audio backend hint"
+msgstr "Dica do backend de áudio"
+
+msgid "Automatic"
+msgstr "Automático"
+
+msgid "BLE (conditional)"
+msgstr "BLE (condicional)"
+
+msgid "BLE HCI"
+msgstr "BLE HCI"
+
+msgid "BLE HCI (conditional)"
+msgstr "BLE HCI (condicional)"
+
+msgid "Board preset"
+msgstr "Predefinição da placa"
+
+msgid "Bootloader"
+msgstr "Bootloader"
+
+msgid "Browse"
+msgstr "Procurar…"
+
+msgid "Build cmd:"
+msgstr "Comando de build:"
+
+msgid "Build (start.sh)"
+msgstr "Build (start.sh)"
+
+msgid "Canvas: ui+embedded host (sim_host) | detached"
+msgstr "Canvas: host embutido (sim_host) | desligado"
+
+msgid "Chip"
+msgstr "Chip"
+
+msgid "Clear"
+msgstr "Limpar"
+
+msgid "Command"
+msgstr "Comando"
+
+msgid "Console mode (tcp/stdio/pty/none)"
+msgstr "Modo da consola (tcp/stdio/pty/none)"
+
+msgid "Cosim board"
+msgstr "Placa cosim"
+
+msgid "cosim board json"
+msgstr "JSON da placa cosim"
+
+msgid "Cosim board JSON"
+msgstr "JSON da placa cosim"
+
+msgid "Cosim Unix path"
+msgstr "Caminho Unix do cosim"
+
+msgid "Cosim via Unix socket bridge (socat, conditional)"
+msgstr "Cosim via ponte de socket Unix (socat, condicional)"
+
+msgid "Debug/GDB/Trace"
+msgstr "Debug/GDB/Trace"
+
+msgid "Dry-run"
+msgstr "Simulação (dry-run)"
+
+msgid "ELF"
+msgstr "ELF"
+
+msgid "ESP32 Simulator (Unified)"
+msgstr "Simulador ESP32 (unificado)"
+
+msgid "esp-emu"
+msgstr "esp-emu"
+
+msgid "esp-emu caps path (probe)"
+msgstr "Caminho do probe de capacidades do esp-emu"
+
+msgid "esp-emu log"
+msgstr "Registo do esp-emu"
+
+msgid "esp-emu path for caps probe"
+msgstr "Caminho do esp-emu para o probe de capacidades"
+
+msgid "Export..."
+msgstr "Exportar..."
+
+msgid "Extra args"
+msgstr "Argumentos extra"
+
+msgid "Firmware"
+msgstr "Firmware"
+
+msgid "Flash mode/freq/size"
+msgstr "Modo/frequência/tamanho da flash"
+
+msgid "Follow"
+msgstr "Seguir"
+
+msgid "FS image"
+msgstr "Imagem FS"
+
+msgid "GDB port"
+msgstr "Porta GDB"
+
+msgid "GDB stub (--gdb, conditional tool)"
+msgstr "GDB stub (--gdb, ferramenta condicional)"
+
+msgid "Halt on start (--gdb-halt)"
+msgstr "Parar no arranque (--gdb-halt)"
+
+msgid "host/cosim log"
+msgstr "registo do host/cosim"
+
+msgid "hostfwd rules ; separated"
+msgstr "regras hostfwd ; separadas"
+
+msgid "Hostfwd (; sep)"
+msgstr "Hostfwd (separador ;)"
+
+msgid "HW rot"
+msgstr "Rot. HW"
+
+msgid "I2S instance"
+msgstr "Instância I2S"
+
+msgid "I2S WAV in (conditional)"
+msgstr "Entrada WAV I2S (condicional)"
+
+msgid "Info"
+msgstr "Info"
+
+msgid "instance id"
+msgstr "id da instância"
+
+msgid "Instance ID"
+msgstr "ID da instância"
+
+msgid "Language"
+msgstr "Idioma"
+
+msgid "LCD H (0=default)"
+msgstr "LCD A (0=predefinido)"
+
+msgid "LCD W (0=default)"
+msgstr "LCD L (0=predefinido)"
+
+msgid "LittleFS enabled (conditional)"
+msgstr "LittleFS ativo (condicional)"
+
+msgid "LittleFS image"
+msgstr "Imagem LittleFS"
+
+msgid "LittleFS label"
+msgstr "Rótulo LittleFS"
+
+msgid "LittleFS mount"
+msgstr "Montagem LittleFS"
+
+msgid "LittleFS offset"
+msgstr "Offset LittleFS"
+
+msgid "LittleFS size"
+msgstr "Tamanho LittleFS"
+
+msgid "Logs"
+msgstr "Logs"
+
+msgid "Logs:"
+msgstr "Logs:"
+
+msgid "Merge"
+msgstr "Merge"
+
+msgid "mount path"
+msgstr "caminho de montagem"
+
+msgid "Network enabled"
+msgstr "Rede ativa"
+
+msgid "net enabled (user mode legacy)"
+msgstr "rede ativa (modo user, legado)"
+
+msgid "Net mode"
+msgstr "Modo de rede"
+
+msgid "offset"
+msgstr "offset"
+
+msgid "on"
+msgstr "on"
+
+msgid "Output"
+msgstr "Saída"
+
+msgid "Overwrite output"
+msgstr "Substituir saída"
+
+msgid "partition label"
+msgstr "rótulo da partição"
+
+msgid "Partitions"
+msgstr "Partições"
+
+msgid "Part name"
+msgstr "Nome da part"
+
+msgid "Parts dir (.wasm):"
+msgstr "Pasta de parts (.wasm):"
+
+msgid "Refresh caps"
+msgstr "Atualizar capacidades"
+
+msgid "Remove"
+msgstr "Remover"
+
+msgid "↻ Restart"
+msgstr "↻ Reiniciar"
+
+msgid "Restart"
+msgstr "Reiniciar"
+
+msgid "Restart the launcher to apply the language."
+msgstr "Reinicie o launcher para aplicar o idioma."
+
+msgid "Run mode"
+msgstr "Modo de execução"
+
+msgid "Instance"
+msgstr "Instância"
+
+msgid "Emulator instance 0-99. Ports derive from it: cosim 5591+10N, UART 5555+10N, control 5556+10N, GDB 3333+10N"
+msgstr "Instância do emulador 0-99. As portas derivam dela: cosim 5591+10N, UART 5555+10N, controlo 5556+10N, GDB 3333+10N"
+
+msgid "Running"
+msgstr "A correr"
+
+msgid "RUNNING"
+msgstr "A CORRER"
+
+msgid "Scale"
+msgstr "Escala"
+
+msgid "Scan"
+msgstr "Procurar"
+
+msgid "SD CS pin"
+msgstr "Pino CS do SD"
+
+msgid "SD image"
+msgstr "Imagem SD"
+
+msgid "SD image (conditional)"
+msgstr "Imagem SD (condicional)"
+
+msgid "SD mode"
+msgstr "Modo SD"
+
+msgid "SD slot"
+msgstr "Slot SD"
+
+msgid "size"
+msgstr "tamanho"
+
+msgid "▶ Start"
+msgstr "▶ Iniciar"
+
+msgid "Start"
+msgstr "Iniciar"
+
+msgid "STARTING…"
+msgstr "A INICIAR…"
+
+msgid "■ Stop"
+msgstr "■ Parar"
+
+msgid "Stop"
+msgstr "Parar"
+
+msgid "Stopped"
+msgstr "Parado"
+
+msgid "STOPPED"
+msgstr "PARADO"
+
+msgid "Stopping"
+msgstr "A parar"
+
+msgid "STOPPING…"
+msgstr "A PARAR…"
+
+msgid "Storage/Parts"
+msgstr "Armazenamento/Parts"
+
+msgid "Merge / Run"
+msgstr "Merge / Execução"
+
+msgid "Target chip (esp-emu)"
+msgstr "Chip alvo (esp-emu)"
+
+msgid "Trace path"
+msgstr "Caminho do trace"
+
+msgid "Trace (--trace, conditional tool)"
+msgstr "Trace (--trace, ferramenta condicional)"
+
+msgid "UART TCP port (from instance)"
+msgstr "Porta TCP da UART (pela instância)"
+
+msgid "user/tap/openeth (conditional)"
+msgstr "user/tap/openeth (condicional)"
+
+msgid "Wi-Fi auth"
+msgstr "Autenticação Wi-Fi"
+
+msgid "Wi-Fi (conditional)"
+msgstr "Wi-Fi (condicional)"
+
+msgid "Wi-Fi password"
+msgstr "Palavra-passe Wi-Fi"
+
+msgid "Wi-Fi SSID"
+msgstr "SSID Wi-Fi"
+
+msgid "Storage"
+msgstr "Armazenamento"
+
+msgid "STORAGE / PARTS"
+msgstr "ARMAZENAMENTO / PARTS"
+
+msgid "Runtime"
+msgstr "Runtime"
+
+msgid "Parts · LittleFS"
+msgstr "Parts · LittleFS"
+
+
+msgid "Cannot start the emulator"
+msgstr "Não é possível iniciar o emulador"
+
+msgid "Pre-start validation failed. See the Validation panel."
+msgstr "A validação antes do arranque falhou. Veja o painel Validação."
+
+msgid "Help contents"
+msgstr "Conteúdo da ajuda"
+
+msgid "Keyboard shortcuts"
+msgstr "Atalhos de teclado"
+
+msgid "Help file not found. Expected: %s (relative to the repository root)."
+msgstr "Ficheiro de ajuda não encontrado. Esperado: %s (relativo à raiz do repositório)."
+
+msgid "Start the emulator"
+msgstr "Iniciar o emulador"
+
+msgid "Stop the emulator"
+msgstr "Parar o emulador"
+
+msgid "Restart the emulator"
+msgstr "Reiniciar o emulador"
+
+msgid "Quit the launcher"
+msgstr "Sair do launcher"
+
+msgid "Project: ESP32 PC Control Deck"
+msgstr "Projeto: ESP32 PC Control Deck"
+
+msgid "Emulator: esp-emu 1.1.0 (external binary)"
+msgstr "Emulador: esp-emu 1.1.0 (binário externo)"
+
+msgid "License: GPL-3.0 (see LICENSE in the repository root)"
+msgstr "Licença: GPL-3.0 (ver LICENSE na raiz do repositório)"
+
+msgid "Profile and firmware settings"
+msgstr "Perfil e definições de firmware"
+
+msgid "Runtime, audio, network, LittleFS and SD settings"
+msgstr "Definições de runtime, áudio, rede, LittleFS e SD"
+
+msgid "Run mode notes. The merge wizard is not built yet"
+msgstr "Notas do modo de execução. O assistente de fusão ainda não está implementado"
+
+msgid "Parts (WASM) list. LittleFS and SD are on the Runtime page"
+msgstr "Lista de partes (WASM). LittleFS e SD estão na página Runtime"
+
+msgid "Board preset and LCD size in use"
+msgstr "Predefinição da placa e tamanho do LCD em uso"
+
+msgid "Time since the emulator started"
+msgstr "Tempo desde que o emulador arrancou"
+
+msgid "Emulator state. RUNNING appears 2 s after the host connects"
+msgstr "Estado do emulador. RUNNING aparece 2 s depois de o host ligar"
+
+msgid "Profile file that Save writes. Empty uses profiles/active.json"
+msgstr "Ficheiro de perfil que o Guardar escreve. Vazio usa profiles/active.json"
+
+msgid "Board from boards/*.json. Sets cosim board and display size defaults"
+msgstr "Placa de boards/*.json. Define a placa cosim e os valores predefinidos do ecrã"
+
+msgid "Chip for esp-emu. The es3c28p board is an ESP32-S3"
+msgstr "Chip do esp-emu. A placa es3c28p é um ESP32-S3"
+
+msgid "Firmware image to run: local build, KryonOS v3, asset or custom path"
+msgstr "Imagem de firmware a executar: build local, KryonOS v3, asset ou caminho personalizado"
+
+msgid "Merged flash image (.bin) passed to esp-emu"
+msgstr "Imagem flash fundida (.bin) passada ao esp-emu"
+
+msgid "ELF with symbols. Used only when Use ELF is checked"
+msgstr "ELF com símbolos. Usado apenas quando Usar ELF está marcado"
+
+msgid "Old custom firmware path. Used only with Custom firmware selected"
+msgstr "Caminho antigo de firmware personalizado. Usado apenas com Firmware personalizado selecionado"
+
+msgid "Whole-number zoom of the LCD on the canvas (1 to 4)"
+msgstr "Zoom inteiro do LCD na área de desenho (1 a 4)"
+
+msgid "Hardware rotation of the LCD and touch, 0 to 3"
+msgstr "Rotação de hardware do LCD e do toque, 0 a 3"
+
+msgid "UI with embedded host (cosim), or backend only (--no-host)"
+msgstr "UI com host embutido (cosim), ou só backend (--no-host)"
+
+msgid "Route cosim through a Unix socket with socat. Needs socat (conditional)"
+msgstr "Encaminha o cosim por socket Unix com socat. Requer socat (condicional)"
+
+msgid "Unix socket path for the socat cosim bridge"
+msgstr "Caminho do socket Unix para a ponte cosim com socat"
+
+msgid "UART console port, derived from the instance (read-only)"
+msgstr "Porta da consola UART, derivada da instância (só leitura)"
+
+msgid "Where the firmware console goes: tcp, stdio, pty or none"
+msgstr "Destino da consola do firmware: tcp, stdio, pty ou none"
+
+msgid "Path to the esp-emu binary"
+msgstr "Caminho do binário esp-emu"
+
+msgid "esp-emu binary used by the capability probe"
+msgstr "Binário esp-emu usado na sondagem de capacidades"
+
+msgid "Run esp-emu --help and --version again and update the capability states"
+msgstr "Executa de novo esp-emu --help e --version e atualiza os estados das capacidades"
+
+msgid "Enable I2S audio through esp-emu. Output is a WAV file"
+msgstr "Ativa o áudio I2S através do esp-emu. A saída é um ficheiro WAV"
+
+msgid "WAV file that receives the I2S output"
+msgstr "Ficheiro WAV que recebe a saída I2S"
+
+msgid "WAV file used as I2S input (optional)"
+msgstr "Ficheiro WAV usado como entrada I2S (opcional)"
+
+msgid "I2S instance number for esp-emu. -1 keeps the default"
+msgstr "Número da instância I2S para o esp-emu. -1 mantém a predefinição"
+
+msgid "Audio backend hint kept in the profile (default wav-file)"
+msgstr "Sugestão de backend de áudio guardada no perfil (predefinição wav-file)"
+
+msgid "Legacy switch for user-mode networking (--net user). Prefer Network enabled"
+msgstr "Opção antiga de rede em modo utilizador (--net user). Prefira Rede ativada"
+
+msgid "Enable networking with --net. Mode is set in Net mode"
+msgstr "Ativa a rede com --net. O modo define-se em Modo de rede"
+
+msgid "Mode for --net. user is the built-in user-mode networking"
+msgstr "Modo de --net. user é a rede integrada em modo utilizador"
+
+msgid "Host port forwards separated by ;. Format proto:hostaddr:hostport-guestaddr:guestport"
+msgstr "Reencaminhamentos de portas do host separados por ;. Formato proto:hostaddr:hostport-guestaddr:guestport"
+
+msgid "Network name of the emulated Wi-Fi AP. Test profiles use testnet"
+msgstr "Nome da rede do AP Wi-Fi emulado. Os perfis de teste usam testnet"
+
+msgid "WPA passphrase, 8 to 63 characters. Ignored for open"
+msgstr "Frase-passe WPA, de 8 a 63 caracteres. Ignorada em open"
+
+msgid "Security of the emulated AP: open, wpa2-psk, wpa3-sae or wpa2-wpa3"
+msgstr "Segurança do AP emulado: open, wpa2-psk, wpa3-sae ou wpa2-wpa3"
+
+msgid "HCI transport for BLE, for example tcp:localhost:9544. Needs an HCI server there"
+msgstr "Transporte HCI para BLE, por exemplo tcp:localhost:9544. Requer um servidor HCI nesse endereço"
+
+msgid "Start a GDB stub on the GDB port (--gdb). Conditional on esp-emu support"
+msgstr "Inicia um stub GDB na porta GDB (--gdb). Depende do suporte do esp-emu"
+
+msgid "TCP port of the GDB stub, derived from the instance (read-only)"
+msgstr "Porta TCP do stub GDB, derivada da instância (só leitura)"
+
+msgid "Wait for GDB before the firmware starts (--gdb-halt)"
+msgstr "Espera pelo GDB antes de o firmware arrancar (--gdb-halt)"
+
+msgid "Write an esp-emu trace file (--trace). Conditional on esp-emu support"
+msgstr "Escreve um ficheiro de trace do esp-emu (--trace). Depende do suporte do esp-emu"
+
+msgid "Output file for the trace"
+msgstr "Ficheiro de saída do trace"
+
+msgid "Partition label of the LittleFS image (default littlefs)"
+msgstr "Etiqueta da partição da imagem LittleFS (predefinição littlefs)"
+
+msgid "Mount path of the LittleFS image in the firmware"
+msgstr "Caminho de montagem da imagem LittleFS no firmware"
+
+msgid "Flash offset of the LittleFS partition. Must match the partition table"
+msgstr "Offset flash da partição LittleFS. Tem de coincidir com a tabela de partições"
+
+msgid "Size of the LittleFS partition. Must match the partition table"
+msgstr "Tamanho da partição LittleFS. Tem de coincidir com a tabela de partições"
+
+msgid "Legacy SD switch. Use Card menu to eject or replace the image"
+msgstr "Opção antiga de SD. Use o menu Cartão para ejetar ou substituir a imagem"
+
+msgid "Card image file (.img). Set it from Card menu > Replace image"
+msgstr "Ficheiro de imagem do cartão (.img). Defina-o em Cartão > Substituir imagem"
+
+msgid "SD bus mode: sdmmc (ESP32-S3), sdspi or none"
+msgstr "Modo do barramento SD: sdmmc (ESP32-S3), sdspi ou none"
+
+msgid "SD slot index (legacy field kept in the profile)"
+msgstr "Índice da ranhura SD (campo antigo mantido no perfil)"
+
+msgid "Chip-select GPIO for SPI SD (legacy field kept in the profile)"
+msgstr "GPIO de seleção de chip para SD em SPI (campo antigo mantido no perfil)"
+
+msgid "Merge wizard is not built yet. Use ./start.sh emu merge"
+msgstr "O assistente de fusão ainda não está implementado. Use ./start.sh emu merge"
+
+msgid "Folder with .wasm parts. Scan reads this folder"
+msgstr "Pasta com partes .wasm. A pesquisa lê esta pasta"
+
+msgid "Look for .wasm parts in the parts folder"
+msgstr "Procura partes .wasm na pasta de partes"
+
+msgid "Check the parts list for claim and wiring conflicts"
+msgstr "Verifica a lista de partes quanto a conflitos de reivindicação e de ligação"
+
+msgid "Id of this part instance in the parts list"
+msgstr "Id desta instância de parte na lista de partes"
+
+msgid "Name of the part to add"
+msgstr "Nome da parte a adicionar"
+
+msgid "Add the part instance to the list, or update its settings"
+msgstr "Adiciona a instância da parte à lista, ou atualiza as suas definições"
+
+msgid "Remove the selected part instance from the list"
+msgstr "Remove da lista a instância de parte selecionada"
+
+msgid "Open a file in the workflow editor"
+msgstr "Abre um ficheiro no editor de fluxo de trabalho"
+
+msgid "Save the workflow file. This does not save the profile"
+msgstr "Guarda o ficheiro do fluxo de trabalho. Não guarda o perfil"
+
+msgid "Run the build command shown in Build cmd"
+msgstr "Executa o comando de build mostrado em Comando de build"
+
+msgid "Show only log lines that contain this text"
+msgstr "Mostra apenas linhas de log que contêm este texto"
+
+msgid "Show only lines of this level. All levels means no filter"
+msgstr "Mostra apenas linhas deste nível. Todos os níveis significa sem filtro"
+
+msgid "Show only lines from this source (esp-emu, host, launcher, validation)"
+msgstr "Mostra apenas linhas desta origem (esp-emu, host, launcher, validação)"
+
+msgid "Keep the log scrolled to the newest line"
+msgstr "Mantém o log a mostrar a linha mais recente"
+
+msgid "Clear the visible log tab"
+msgstr "Limpa o separador de log visível"
+
+msgid "Save the visible log lines to a text file"
+msgstr "Guarda as linhas de log visíveis num ficheiro de texto"
+
+msgid "Create a profile with default values. Nothing is saved until Save"
+msgstr "Cria um perfil com valores predefinidos. Nada é guardado até Guardar"
+
+msgid "Load a profile JSON file and make it the active profile"
+msgstr "Carrega um ficheiro JSON de perfil e torna-o o perfil ativo"
+
+msgid "Write the active profile file"
+msgstr "Escreve o ficheiro do perfil ativo"
+
+msgid "Write the profile to a new file and make it the active profile"
+msgstr "Escreve o perfil num ficheiro novo e torna-o o perfil ativo"
+
+msgid "Copy the active profile to a new file and make the copy active"
+msgstr "Copia o perfil ativo para um ficheiro novo e torna a cópia ativa"
+
+msgid "Import a legacy launcher.conf into the editor"
+msgstr "Importa um launcher.conf antigo para o editor"
+
+msgid "Write a copy of the profile to a file. The active profile does not change"
+msgstr "Escreve uma cópia do perfil num ficheiro. O perfil ativo não muda"
+
+msgid "Close the launcher. Stops the emulator. Unsaved profile changes ask first (Ctrl+Q)"
+msgstr "Fecha o launcher. Para o emulador. Alterações do perfil por guardar pedem confirmação (Ctrl+Q)"
+
+msgid "The profile has unsaved changes."
+msgstr "O perfil tem alterações por guardar."
+
+msgid "Save the active profile before quitting?"
+msgstr "Guardar o perfil ativo antes de sair?"
+
+msgid "Cancel"
+msgstr "Cancelar"
+
+msgid "Discard"
+msgstr "Descartar"
+
+msgid "Could not save the profile."
+msgstr "Não foi possível guardar o perfil."
+
+msgid "The launcher stays open. See the log."
+msgstr "O launcher continua aberto. Veja o registo."
+
+msgid "Start the emulator with the active profile (Ctrl+R)"
+msgstr "Inicia o emulador com o perfil ativo (Ctrl+R)"
+
+msgid "Stop the emulator and the host (Ctrl+.)"
+msgstr "Para o emulador e o host (Ctrl+.)"
+
+msgid "Stop and start the emulator again (Ctrl+Shift+R)"
+msgstr "Para e volta a iniciar o emulador (Ctrl+Shift+R)"
+
+msgid "Run validation again and show the results in the Validation tab"
+msgstr "Volta a validar e mostra os resultados no separador Validação"
+
+msgid "Copy the effective esp-emu command line to the clipboard"
+msgstr "Copia a linha de comando efetiva do esp-emu para a área de transferência"
+
+msgid "Show or hide the drawer with the configuration pages"
+msgstr "Mostra ou oculta a gaveta com as páginas de configuração"
+
+msgid "Show or hide the bottom dock"
+msgstr "Mostra ou oculta o painel inferior"
+
+msgid "Show or hide the status bar"
+msgstr "Mostra ou oculta a barra de estado"
+
+msgid "Show or hide the log tabs of the bottom dock"
+msgstr "Mostra ou oculta os separadores de log do painel inferior"
+
+msgid "Interface language. The launcher must be restarted to apply it"
+msgstr "Idioma da interface. O launcher tem de ser reiniciado para o aplicar"
+
+msgid "Open the launcher help file"
+msgstr "Abre o ficheiro de ajuda do launcher"
+
+msgid "List the keyboard shortcuts"
+msgstr "Lista os atalhos de teclado"
+
+msgid "About this launcher"
+msgstr "Sobre este launcher"
+
+#: sim_launcher.c
+msgid "Choose a profile file"
+msgstr "Escolha um ficheiro de perfil"
+
+#: sim_launcher.c
+msgid "Choose the merged firmware image"
+msgstr "Escolha a imagem de firmware unificada"
+
+#: sim_launcher.c
+msgid "Choose the ELF file"
+msgstr "Escolha o ficheiro ELF"
+
+#: sim_launcher.c
+msgid "Choose the cosim board JSON"
+msgstr "Escolha o ficheiro JSON da placa cosim"
+
+#: sim_launcher.c
+msgid "Choose the esp-emu binary for the probe"
+msgstr "Escolha o binário do esp-emu para a sondagem"
+
+#: sim_launcher.c
+msgid "Choose the output WAV file"
+msgstr "Escolha o ficheiro WAV de saída"
+
+#: sim_launcher.c
+msgid "Choose the input WAV file"
+msgstr "Escolha o ficheiro WAV de entrada"
+
+#: sim_launcher.c
+msgid "Choose the trace output file"
+msgstr "Escolha o ficheiro de saída do trace"
+
+#: sim_launcher.c
+msgid "Choose the LittleFS image file"
+msgstr "Escolha o ficheiro de imagem LittleFS"
+
+#: validate.c:444
+msgid "Wi-Fi passphrase must be 8-63 characters (esp-emu)"
+msgstr "A frase-passe Wi-Fi tem de ter de 8 a 63 caracteres (esp-emu)"
+
+#: validate.c:445
+msgid "Use an 8-63 character passphrase or set the network to open"
+msgstr "Use uma frase-passe de 8 a 63 caracteres ou defina a rede como open"
+
+#: validate.c:449
+msgid "Open network: the passphrase is ignored"
+msgstr "Rede open: a frase-passe é ignorada"

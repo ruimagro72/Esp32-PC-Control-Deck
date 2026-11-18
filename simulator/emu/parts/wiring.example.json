@@ -1,0 +1,52 @@
+{
+  "_comment": "Illustrative example only — not loaded by default. Shows conceptual structure for esp-part / --cosim-board wiring (devices, I2C regfiles, pin claims). Adapt to actual esp_cosim.proto / esp-emu version and target board.",
+  "chip": "esp32s3",
+  "devices": [
+    {
+      "type": "regfile",
+      "name": "touch_ft6336_example",
+      "bus": "i2c",
+      "port": 0,
+      "addr": 56,
+      "addr_hex": "0x38",
+      "description": "Example I2C touch register stub (FT6336-like) for init/ACK.",
+      "regs": {
+        "0x00": 1,
+        "0xA3": 54,
+        "0xA8": 17
+      }
+    },
+    {
+      "type": "regfile",
+      "name": "codec_es8311_example",
+      "bus": "i2c",
+      "port": 1,
+      "addr": 24,
+      "addr_hex": "0x18",
+      "description": "Example I2C codec register stub for init.",
+      "regs": {
+        "0x00": 131,
+        "0x01": 0
+      }
+    }
+  ],
+  "claims_example": {
+    "i2c": [
+      { "sda": 16, "scl": 15, "addr": "0x38" }
+    ],
+    "spi": [
+      { "bus": "SPI2", "sclk": 12, "mosi": 11, "miso": 13, "cs": 10, "dc": 46 }
+    ],
+    "gpio": [
+      { "pin": 45, "role": "lcd_bl" },
+      { "pin": 17, "role": "touch_int" }
+    ]
+  },
+  "parts_wasm": [
+    {
+      "path": "parts/example_device.wasm",
+      "status": "placeholder",
+      "note": "Load via --cosim-board only when esp-emu build supports WASM parts and ABI matches."
+    }
+  ]
+}

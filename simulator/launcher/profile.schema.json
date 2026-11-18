@@ -1,0 +1,385 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/schemas/simulator.profile/v1",
+  "title": "Simulator Profile (simulator.profile/v1)",
+  "description": "JSON Schema (draft 2020-12) for ESP32 simulator launcher profiles. Support states are noted in descriptions: supported, partial, planned, or blocked.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "metadata",
+    "board_hardware",
+    "firmware",
+    "storage",
+    "audio",
+    "network_radio",
+    "emu_runtime",
+    "ui_state",
+    "extensions"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "simulator.profile/v1",
+      "description": "Profile schema identifier/version (supported)."
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Profile metadata (supported).",
+      "additionalProperties": false,
+      "required": ["id", "name", "board_preset"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "description": "Stable profile id/slug." },
+        "name": { "type": "string", "minLength": 1, "description": "Human-readable profile name." },
+        "description": { "type": "string", "description": "Optional profile description." },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [],
+          "description": "Search/filter tags."
+        },
+        "board_preset": { "type": "string", "minLength": 1, "description": "Board preset key (e.g. es3c28p)." },
+        "timestamps": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "created_at": { "type": "string", "format": "date-time", "description": "Creation timestamp (ISO 8601)." },
+            "updated_at": { "type": "string", "format": "date-time", "description": "Last update timestamp (ISO 8601)." }
+          },
+          "description": "Optional profile timestamps."
+        }
+      }
+    },
+    "board_hardware": {
+      "type": "object",
+      "description": "Board and hardware configuration (mostly supported; some fields may be partial depending launcher/emu).",
+      "additionalProperties": false,
+      "required": ["board_id", "mcu", "display", "touch"],
+      "properties": {
+        "board_id": { "type": "string", "minLength": 1, "description": "Board identifier." },
+        "mcu": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["chip"],
+          "properties": {
+            "chip": {
+              "type": "string",
+              "enum": ["esp32", "esp32s2", "esp32s3", "esp32c3", "esp32c6", "esp32h2"],
+              "description": "MCU target chip (supported for common ESP32 family values)."
+            },
+            "psram": {
+              "type": ["string", "integer", "null"],
+              "description": "PSRAM size/config (e.g. 2M, 8M, 0). Support depends on emu/runtime."
+            },
+            "flash": {
+              "type": ["string", "integer", "null"],
+              "description": "Flash size/config (e.g. 16M)."
+            }
+          }
+        },
+        "display": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["width", "height"],
+          "properties": {
+            "width": { "type": "integer", "minimum": 1, "description": "Display width in pixels." },
+            "height": { "type": "integer", "minimum": 1, "description": "Display height in pixels." },
+            "overrides": {
+              "type": "object",
+              "additionalProperties": true,
+              "default": {},
+              "description": "Driver/panel-specific overrides (partial)."
+            },
+            "orientation": {
+              "type": "integer",
+              "enum": [0, 1, 2, 3],
+              "default": 0,
+              "description": "Logical/UI orientation (supported where implemented)."
+            },
+            "panel": {
+              "type": "object",
+              "additionalProperties": true,
+              "description": "Panel model/bus/timing details (partial/planned by backend)."
+            }
+          }
+        },
+        "touch": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "controller": { "type": ["string", "null"], "description": "Touch controller model (e.g. CST816S, GT911). Partial support." },
+            "bus": { "type": ["string", "null"], "description": "Touch bus type (e.g. i2c, spi). Partial support." },
+            "pins": {
+              "type": "object",
+              "additionalProperties": { "type": ["integer", "string", "null"] },
+              "default": {},
+              "description": "Touch pin mapping (sda/scl/int/rst/etc.). Partial."
+            },
+            "calibration": {
+              "type": "object",
+              "additionalProperties": true,
+              "default": {},
+              "description": "Touch calibration data (planned/partial)."
+            }
+          },
+          "description": "Touch hardware config."
+        },
+        "buses_pins": {
+          "type": "object",
+          "additionalProperties": true,
+          "default": {},
+          "description": "Additional bus/pin mappings (SPI/I2C/UART/GPIO). Partial/planned."
+        },
+        "cosim": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "mode": {
+              "type": "string",
+              "enum": ["none", "board_json", "tcp", "unix"],
+              "default": "board_json",
+              "description": "Co-simulation transport/mode. board_json supported; tcp/unix planned/partial."
+            },
+            "board_json": {
+              "type": ["string", "null"],
+              "description": "Path to emu board JSON (relative to repo/profile base as resolved by launcher). Supported."
+            },
+            "tcp": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "host": { "type": "string", "default": "127.0.0.1" },
+                "port": { "type": "integer", "minimum": 1, "maximum": 65535 }
+              },
+              "description": "TCP cosim endpoint (planned/partial)."
+            },
+            "unix": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "path": { "type": "string" }
+              },
+              "description": "UNIX socket cosim endpoint (planned/partial)."
+            }
+          },
+          "description": "Peripheral co-simulation configuration."
+        }
+      }
+    },
+    "firmware": {
+      "type": "object",
+      "description": "Firmware selection, artifacts, flash layout and build resolution (core supported).",
+      "additionalProperties": false,
+      "required": ["selection", "artifacts"],
+      "properties": {
+        "selection": {
+          "type": "string",
+          "description": "Firmware selection key (e.g. local_es3c28p_emu, custom). Supported."
+        },
+        "format": {
+          "type": "string",
+          "enum": ["merged", "split", "elf", "uf2", "littlefs"],
+          "default": "merged",
+          "description": "Primary firmware artifact format. merged/elf common; uf2/littlefs partial/planned."
+        },
+        "artifacts": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "merged": { "type": ["string", "null"], "description": "Merged flash image path." },
+            "boot": { "type": ["string", "null"], "description": "Bootloader image path (split mode)." },
+            "part": { "type": ["string", "null"], "description": "Partition table image path (split mode)." },
+            "app": { "type": ["string", "null"], "description": "Application image path (split mode)." },
+            "elf": { "type": ["string", "null"], "description": "ELF path for symbol/debug/emu use." },
+            "use_elf": { "type": "boolean", "default": false, "description": "Whether to use ELF when launching/symbolizing." },
+            "littlefs": { "type": ["string", "null"], "description": "LittleFS image path (partial/planned)." },
+            "uf2": { "type": ["string", "null"], "description": "UF2 image path (planned/unsupported in most emu flows)." }
+          },
+          "description": "Firmware artifact paths."
+        },
+        "flash": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "mode": { "type": ["string", "null"], "enum": ["qio", "qout", "dio", "dout", "opi", null], "description": "Flash mode." },
+            "freq": { "type": ["string", "null"], "description": "Flash frequency (e.g. 80m)." },
+            "size": { "type": ["string", "null"], "description": "Flash size (e.g. 16MB)." },
+            "offsets": {
+              "type": "object",
+              "additionalProperties": { "type": ["string", "integer"] },
+              "default": {},
+              "description": "Flash offsets (bootloader/partitions/app/etc.)."
+            }
+          },
+          "description": "Flash parameters (used mainly in split/flash flows; partial in launcher)."
+        },
+        "build": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "env": { "type": ["string", "null"], "description": "Build environment name (e.g. PlatformIO env)." }
+          },
+          "description": "Build metadata (informational)."
+        },
+        "resolved": {
+          "type": "object",
+          "additionalProperties": true,
+          "default": {},
+          "description": "Resolved/runtime-derived firmware info cached by launcher (planned/partial)."
+        }
+      }
+    },
+    "storage": {
+      "type": "object",
+      "description": "Storage configuration.",
+      "additionalProperties": false,
+      "properties": {
+        "littlefs": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean", "default": false },
+            "image_path": { "type": ["string", "null"] },
+            "mount_path": { "type": ["string", "null"] }
+          },
+          "description": "LittleFS storage (partial/planned depending flow)."
+        },
+        "sd_enabled": { "type": "boolean", "default": true, "description": "Mount the SD image in esp-emu (--sd); false = --no-sd (card ejected)." },
+        "sd_image_path": { "type": ["string", "null"], "default": "simulator/emu/storage/sd.img", "description": "SD card image passed to esp-emu --sd (esp-emu 1.1.0)." },
+        "sd_card": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean", "default": false },
+            "image_path": { "type": ["string", "null"] },
+            "mount_path": { "type": ["string", "null"] },
+            "note": {
+              "type": "string",
+              "default": "esp-emu 1.1.0 mounts the card image with --sd",
+              "description": "Support-status note for SD card."
+            }
+          },
+          "description": "SD card storage (esp-emu 1.1.0 --sd)."
+        }
+      }
+    },
+    "audio": {
+      "type": "object",
+      "description": "Audio emulation settings (supported flags, device routing partial).",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean", "default": true, "description": "Master audio enable." },
+        "out": { "type": ["string", "boolean", "null"], "default": null, "description": "Audio output config/device (partial)." },
+        "in": { "type": ["string", "boolean", "null"], "default": null, "description": "Audio input config/device (partial/planned)." },
+        "realtime": { "type": "boolean", "default": false, "description": "Realtime audio pacing preference (partial)." }
+      }
+    },
+    "network_radio": {
+      "type": "object",
+      "description": "Network and radio options.",
+      "additionalProperties": false,
+      "properties": {
+        "net_user": { "type": "boolean", "default": false, "description": "Enable user-mode networking (supported where emu allows)." },
+        "net_mode": { "type": "string", "default": "", "description": "esp-emu net mode (user, tap, vmnet). Empty string = network off." },
+        "hostfwd": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [],
+          "description": "Host forwarding rules (planned/partial)."
+        },
+        "wifi": {
+          "type": "object",
+          "additionalProperties": false,
+          "default": { "enabled": false, "ssid": "", "auth": "unknown" },
+          "description": "Wi-Fi soft AP (esp-emu --wifi-ssid). The passphrase is never stored in the profile.",
+          "properties": {
+            "enabled": { "type": "boolean", "default": false },
+            "ssid": { "type": "string", "default": "", "maxLength": 32 },
+            "auth": { "type": "string", "enum": ["open", "wpa2-wpa3", "wpa2-psk", "wpa3-sae", "unknown"], "default": "unknown" }
+          }
+        },
+        "ble": {
+          "type": "object",
+          "additionalProperties": false,
+          "default": { "enabled": false, "hci": "" },
+          "description": "BLE emulation (HCI over a socket, esp-emu).",
+          "properties": {
+            "enabled": { "type": "boolean", "default": false },
+            "hci": { "type": "string", "default": "", "description": "HCI transport, e.g. tcp:localhost:9544." }
+          }
+        }
+      }
+    },
+    "emu_runtime": {
+      "type": "object",
+      "description": "Emulator/runtime execution settings (core supported).",
+      "additionalProperties": false,
+      "required": ["esp_emu_path"],
+      "properties": {
+        "esp_emu_path": { "type": "string", "minLength": 1, "description": "Path to esp-emu binary (repo-relative recommended)." },
+        "chip": { "type": ["string", "null"], "description": "Runtime chip override (normally derived from board_hardware.mcu)." },
+        "psram": { "type": ["string", "integer", "null"], "description": "Runtime PSRAM override." },
+        "timeout": { "type": ["integer", "null"], "minimum": 0, "description": "Run timeout in seconds; null/0 for no timeout (partial/support varies)." },
+        "instance": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 99,
+          "default": 0,
+          "description": "Emulator instance N. Ports derive from it: cosim 5591+10N, UART 5555+10N, control 5556+10N, GDB 3333+10N."
+        },
+        "extra_args": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "array", "items": { "type": "string" } }
+          ],
+          "default": "",
+          "description": "Extra esp-emu arguments (string or array)."
+        },
+        "console_mode": {
+          "type": "string",
+          "enum": ["none", "stdio", "tcp", "pty"],
+          "default": "tcp",
+          "description": "Console/UART presentation mode (partial; tcp common)."
+        }
+      }
+    },
+    "ui_state": {
+      "type": "object",
+      "description": "Launcher/UI persisted state (supported/partial).",
+      "additionalProperties": false,
+      "properties": {
+        "scale": { "type": "number", "exclusiveMinimum": 0, "default": 1, "description": "Display scale factor." },
+        "window": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "x": { "type": "integer" },
+            "y": { "type": "integer" },
+            "width": { "type": "integer", "minimum": 1 },
+            "height": { "type": "integer", "minimum": 1 },
+            "maximized": { "type": "boolean", "default": false }
+          },
+          "description": "Window geometry/state (partial)."
+        },
+        "panels": {
+          "type": "object",
+          "additionalProperties": { "type": ["boolean", "string", "number", "object", "array", "null"] },
+          "default": {},
+          "description": "Panel visibility/layout state (partial/planned)."
+        },
+        "last_run": {
+          "type": "object",
+          "additionalProperties": true,
+          "default": {},
+          "description": "Last run metadata (exit code, timestamps, etc.; planned/partial)."
+        }
+      }
+    },
+    "extensions": {
+      "type": "object",
+      "description": "Vendor/tool-specific extensions; keys should be namespaced.",
+      "additionalProperties": true,
+      "default": {}
+    }
+  }
+}

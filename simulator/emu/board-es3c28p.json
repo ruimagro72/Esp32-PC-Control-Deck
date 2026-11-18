@@ -1,0 +1,8 @@
+{
+  "devices": {
+    "touch_ft6336_i2c0": { "type": "regfile", "i2c": 0, "addr": "0x38", "regs": { "0xA3": "0x00", "0xA6": "0x11", "0xA8": "0x11", "0x00": "0x00" } },
+    "touch_ft6336_i2c1": { "type": "regfile", "i2c": 1, "addr": "0x38", "regs": { "0xA3": "0x00", "0xA6": "0x11", "0xA8": "0x11", "0x00": "0x00" } },
+    "codec_es8311_i2c0":  { "type": "regfile", "i2c": 0, "addr": "0x18" },
+    "codec_es8311_i2c1":  { "type": "regfile", "i2c": 1, "addr": "0x18" }
+  }
+}

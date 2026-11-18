@@ -1,0 +1,125 @@
+{
+  "id": "es3c28p",
+  "name": "ES3C28P (KryonOS local)",
+  "status": "supported-default",
+  "display": {
+    "width": 240,
+    "height": 320,
+    "panel": "native-portrait",
+    "bus": "spi",
+    "controller": "ILI9341/ST7789-compatible-cosim-generic",
+    "bgr": false,
+    "rotation_default": 0,
+    "pins": {
+      "cs": 10,
+      "dc": 46,
+      "sclk": 12,
+      "mosi": 11,
+      "miso": 13,
+      "bl": 45
+    }
+  },
+  "touch": {
+    "type": "capacitive",
+    "controller": "FT6336G",
+    "bus": "i2c",
+    "i2c_port": 0,
+    "addr": "0x38",
+    "pins": {
+      "scl": 15,
+      "sda": 16,
+      "int": 17,
+      "rst": 18
+    },
+    "mapping": {
+      "swap_xy": false,
+      "invert_x": false,
+      "invert_y": false
+    },
+    "calibration": {
+      "x_off": 0,
+      "y_off": 0
+    }
+  },
+  "input": {
+    "type": "touchscreen",
+    "matrix_keyboard": false
+  },
+  "buses": {
+    "spi": [
+      {
+        "name": "lcd_spi",
+        "pins": {
+          "sclk": 12,
+          "mosi": 11,
+          "miso": 13
+        }
+      }
+    ],
+    "i2c": [
+      {
+        "name": "touch_i2c",
+        "port": 0,
+        "pins": {
+          "scl": 15,
+          "sda": 16
+        }
+      }
+    ],
+    "uart": []
+  },
+  "cosim": {
+    "device": "es3c28p-lcd-touch",
+    "default_port": "5591",
+    "wiring_hints": [
+      "claim SPI LCD pins + I2C touch addr 0x38",
+      "GPIO watch DC/RST/BL, drive INT"
+    ]
+  },
+  "capabilities": {
+    "supported": [
+      "spi-lcd-framebuffer-rgb565",
+      "ft6336-style-i2c-touch-regs",
+      "hw-rotation",
+      "runtime-display-touch-transform"
+    ],
+    "needs_runtime_host": [],
+    "blocked_by_emu": [],
+    "conditional": [
+      "exact-panel-timings-init-seq-abstracted"
+    ]
+  },
+  "notes": [
+    "Default/reference profile; matches current compile-time host claims.",
+    "Bus pins/controller/addr remain compile-time in host; runtime applies display/touch transform fields."
+  ],
+  "limits": {
+    "runtime_configurable": [
+      "display.width",
+      "display.height",
+      "display.mirror_x",
+      "display.mirror_y",
+      "touch.mapping.swap_xy",
+      "touch.mapping.invert_x",
+      "touch.mapping.invert_y",
+      "touch.calibration.x_off",
+      "touch.calibration.y_off",
+      "hw_rot"
+    ],
+    "compile_time_or_conditional": [
+      "display.bus",
+      "display.controller",
+      "display.spi_pins",
+      "touch.type",
+      "touch.controller",
+      "touch.bus",
+      "touch.addr",
+      "touch.pins",
+      "gpio_claims",
+      "cosim_protocol"
+    ],
+    "emulator_limitations": [
+      "non-es3c28p peripheral controllers/buses not fully modeled; profile metadata/validation only unless runtime host support exists"
+    ]
+  }
+}

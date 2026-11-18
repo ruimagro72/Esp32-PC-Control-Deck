@@ -1,0 +1,392 @@
+{
+  "schema_version": 1,
+  "description": "Index of esp-emu firmware assets present under simulator/emu/firmware and related local build artifacts.",
+  "generated_context": {
+    "date": "2026-11-16",
+    "esp_emu_local_binary": "simulator/esp-emu-1.1.0-x86_64-unknown-linux-gnu/esp-emu",
+    "esp_emu_local_version": "1.1.0",
+    "chip_default": "esp32s3"
+  },
+  "notes": [
+    "es3c28p local merged image (simulator/emu/firmware/es3c28p/merged.bin) is byte-identical to simulator/build/merged-emu.bin (sha256 fe93f20bb2eb2c71913f084526e13394f760e58c360f471839c7ffcde94e89d8, 2864640 bytes). simulator/build/merged.bin is a different image (sha256 86b6e1d7a09c0833e7b441592632a43af22c5ad5f08bf3d05c9275c8e66116b8, 3041392 bytes).",
+    "simulator/emu/firmware/README.md states es3c28p merged source copy came from simulator/emu/merged-emu.bin -> es3c28p/merged.bin; that source path is not present in current tree, but content matches simulator/build/merged-emu.bin.",
+    "KryonOS v3.0.0 release assets are split images plus locally prepared merged.bin per board; no ELF provided in release (reduced debug/symbol interception).",
+    "Boot/runtime caveats (esp-emu 1.1.0, S3): stock firmware may block on I2S/SD_MMC/ADC without emu guards; SD via --sd (card image, esp-emu 1.1.0); LCD SPI live UI depends on cosim host/parts; Wi-Fi/BLE parity to validate. See simulator/emu/HARDWARE-SUPPORT.md, simulator/emu/NOTES.md, simulator/emu/EMULATOR-NOTES.md, docs/simulator/ESP_EMULATOR_INTEGRATION.md."
+  ],
+  "assets": [
+    {
+      "id": "es3c28p-local-emu",
+      "board": "es3c28p",
+      "source": {
+        "type": "local",
+        "origin": "local build firmware/.pio/build/es3c28p_emu/ (this repo), as recorded in simulator/emu/firmware/README.md",
+        "merged_preferred_local": "simulator/build/merged-emu.bin",
+        "merged_preferred_local_relation": "identical content/hash/size to simulator/emu/firmware/es3c28p/merged.bin"
+      },
+      "flash": {
+        "chip": "esp32s3",
+        "flash_mode": "qio",
+        "flash_freq": "80m",
+        "flash_size": "16MB"
+      },
+      "files": [
+        {
+          "path": "simulator/emu/firmware/es3c28p/bootloader.bin",
+          "type": "split",
+          "role": "bootloader",
+          "offset": "0x0",
+          "size_bytes": 15104,
+          "sha256": "2a71d69b471e20c2bac7fb469f3c6a807b3ebee780e348e5889db0da849ca363",
+          "checksum_ref": null
+        },
+        {
+          "path": "simulator/emu/firmware/es3c28p/partitions.bin",
+          "type": "split",
+          "role": "partitions",
+          "offset": "0x8000",
+          "size_bytes": 3072,
+          "sha256": "bd0f7954aca2ef7d925ee21aaa1f3dc8822d1d6ce5cbbd26a135e5886bfff6ce",
+          "checksum_ref": null
+        },
+        {
+          "path": "simulator/emu/firmware/es3c28p/firmware.bin",
+          "type": "split",
+          "role": "app",
+          "offset": "0x10000",
+          "size_bytes": 2799104,
+          "sha256": "e2359e6ea547a0c4dd3ceba7bbc88e2516491760506329c87966db76335d3241",
+          "checksum_ref": null
+        },
+        {
+          "path": "simulator/emu/firmware/es3c28p/firmware.elf",
+          "type": "elf",
+          "role": "symbols_debug",
+          "offset": null,
+          "size_bytes": 49328240,
+          "sha256": "dab9cd445002c1c2abecc454abccc8493e0903b6c51e12fd9b0506e6ddc7f419",
+          "checksum_ref": null
+        },
+        {
+          "path": "simulator/emu/firmware/es3c28p/merged.bin",
+          "type": "merged",
+          "role": "flash_image",
+          "offset": "0x0",
+          "size_bytes": 2864640,
+          "sha256": "fe93f20bb2eb2c71913f084526e13394f760e58c360f471839c7ffcde94e89d8",
+          "checksum_ref": null,
+          "same_as": [
+            "simulator/build/merged-emu.bin"
+          ]
+        }
+      ],
+      "checksums": {
+        "file": null,
+        "notes": "No checksums.sha256 file present for es3c28p local assets; hashes recorded inline."
+      },
+      "caveats": [
+        "Use es3c28p_emu build/guards (ESP_EMU_SKIP_AUDIO) for better boot behavior in emulation; stock build may WDT/hang on I2S/SD/ADC.",
+        "ELF available for symbols/interception; LCD/touch/SD/audio/network parity subject to esp-emu/peripheral model limits."
+      ]
+    },
+    {
+      "id": "kryonos-v3-esp32-s3-devkitc-1-n16r8",
+      "board": "esp32-s3-devkitc-1-n16r8",
+      "source": {
+        "type": "release",
+        "project": "KryonOS",
+        "release": "v3.0.0",
+        "release_url": "https://github.com/Haris16-code/KryonOS/releases/tag/v3.0.0",
+        "asset_base_url": "https://github.com/Haris16-code/KryonOS/releases/download/v3.0.0",
+        "spec_ref": "simulator/emu/KRYONOS-V3.0.0-PREP.md"
+      },
+      "flash": {
+        "chip": "esp32s3",
+        "flash_mode": "qio",
+        "flash_freq": "80m",
+        "flash_size": "16MB"
+      },
+      "merge": {
+        "tool": "esptool --chip esp32s3 merge-bin",
+        "offsets": {
+          "bootloader": "0x0",
+          "partitions": "0x8000",
+          "app": "0x10000"
+        }
+      },
+      "files": [
+        {
+          "path": "simulator/emu/firmware/kryonos-v3/esp32-s3-devkitc-1-n16r8/bootloader.bin",
+          "type": "split",
+          "role": "bootloader",
+          "offset": "0x0",
+          "sha256": "2a71d69b471e20c2bac7fb469f3c6a807b3ebee780e348e5889db0da849ca363",
+          "release_asset": "KryonOS-v3.0.0-esp32-s3-devkitc-1-n16r8-bootloader-0x0000.bin",
+          "checksum_ref": "simulator/emu/firmware/kryonos-v3/esp32-s3-devkitc-1-n16r8/checksums.sha256"
+        },
+        {
+          "path": "simulator/emu/firmware/kryonos-v3/esp32-s3-devkitc-1-n16r8/partitions.bin",
+          "type": "split",
+          "role": "partitions",
+          "offset": "0x8000",
+          "sha256": "bd0f7954aca2ef7d925ee21aaa1f3dc8822d1d6ce5cbbd26a135e5886bfff6ce",
+          "release_asset": "KryonOS-v3.0.0-esp32-s3-devkitc-1-n16r8-partitions-0x8000.bin",
+          "checksum_ref": "simulator/emu/firmware/kryonos-v3/esp32-s3-devkitc-1-n16r8/checksums.sha256"
+        },
+        {
+          "path": "simulator/emu/firmware/kryonos-v3/esp32-s3-devkitc-1-n16r8/firmware.bin",
+          "type": "split",
+          "role": "app",
+          "offset": "0x10000",
+          "sha256": "7031566f1fd2c3a2ecf5e5c0fb0243abe3d737c298baddbbeabfc4c5b43cb257",
+          "release_asset": "KryonOS-v3.0.0-esp32-s3-devkitc-1-n16r8-firmware-0x10000.bin",
+          "checksum_ref": "simulator/emu/firmware/kryonos-v3/esp32-s3-devkitc-1-n16r8/checksums.sha256"
+        },
+        {
+          "path": "simulator/emu/firmware/kryonos-v3/esp32-s3-devkitc-1-n16r8/merged.bin",
+          "type": "merged",
+          "role": "flash_image",
+          "offset": "0x0",
+          "sha256": null,
+          "checksum_ref": null,
+          "notes": "Locally merged from verified split images; no separate checksum entry in checksums.sha256."
+        }
+      ],
+      "checksums": {
+        "file": "simulator/emu/firmware/kryonos-v3/esp32-s3-devkitc-1-n16r8/checksums.sha256",
+        "covers": [
+          "bootloader.bin",
+          "partitions.bin",
+          "firmware.bin"
+        ]
+      },
+      "caveats": [
+        "No ELF in release; release binaries may lack emu guards and can hang/WDT on unsupported peripherals."
+      ]
+    },
+    {
+      "id": "kryonos-v3-lilygo-t-deck",
+      "board": "lilygo-t-deck",
+      "source": {
+        "type": "release",
+        "project": "KryonOS",
+        "release": "v3.0.0",
+        "release_url": "https://github.com/Haris16-code/KryonOS/releases/tag/v3.0.0",
+        "asset_base_url": "https://github.com/Haris16-code/KryonOS/releases/download/v3.0.0",
+        "spec_ref": "simulator/emu/KRYONOS-V3.0.0-PREP.md"
+      },
+      "flash": {
+        "chip": "esp32s3",
+        "flash_mode": "qio",
+        "flash_freq": "80m",
+        "flash_size": "16MB"
+      },
+      "merge": {
+        "tool": "esptool --chip esp32s3 merge-bin",
+        "offsets": {
+          "bootloader": "0x0",
+          "partitions": "0x8000",
+          "app": "0x10000"
+        }
+      },
+      "files": [
+        {
+          "path": "simulator/emu/firmware/kryonos-v3/lilygo-t-deck/bootloader.bin",
+          "type": "split",
+          "role": "bootloader",
+          "offset": "0x0",
+          "sha256": "2a71d69b471e20c2bac7fb469f3c6a807b3ebee780e348e5889db0da849ca363",
+          "release_asset": "KryonOS-v3.0.0-lilygo-t-deck-bootloader-0x0000.bin",
+          "checksum_ref": "simulator/emu/firmware/kryonos-v3/lilygo-t-deck/checksums.sha256"
+        },
+        {
+          "path": "simulator/emu/firmware/kryonos-v3/lilygo-t-deck/partitions.bin",
+          "type": "split",
+          "role": "partitions",
+          "offset": "0x8000",
+          "sha256": "bd0f7954aca2ef7d925ee21aaa1f3dc8822d1d6ce5cbbd26a135e5886bfff6ce",
+          "release_asset": "KryonOS-v3.0.0-lilygo-t-deck-partitions-0x8000.bin",
+          "checksum_ref": "simulator/emu/firmware/kryonos-v3/lilygo-t-deck/checksums.sha256"
+        },
+        {
+          "path": "simulator/emu/firmware/kryonos-v3/lilygo-t-deck/firmware.bin",
+          "type": "split",
+          "role": "app",
+          "offset": "0x10000",
+          "sha256": "fe80e0a7585aee9ffec930679c97c21ee1da84583978b955a3731830e4fb1b74",
+          "release_asset": "KryonOS-v3.0.0-lilygo-t-deck-firmware-0x10000.bin",
+          "checksum_ref": "simulator/emu/firmware/kryonos-v3/lilygo-t-deck/checksums.sha256"
+        },
+        {
+          "path": "simulator/emu/firmware/kryonos-v3/lilygo-t-deck/merged.bin",
+          "type": "merged",
+          "role": "flash_image",
+          "offset": "0x0",
+          "sha256": null,
+          "checksum_ref": null,
+          "notes": "Locally merged from verified split images; no separate checksum entry in checksums.sha256."
+        }
+      ],
+      "checksums": {
+        "file": "simulator/emu/firmware/kryonos-v3/lilygo-t-deck/checksums.sha256",
+        "covers": [
+          "bootloader.bin",
+          "partitions.bin",
+          "firmware.bin"
+        ]
+      },
+      "caveats": [
+        "No ELF in release; GT911 touch, keyboard coprocessor, trackball, SD/audio/GPS peripherals not fully modeled in local emu stack."
+      ]
+    },
+    {
+      "id": "kryonos-v3-lilygo-t-hmi",
+      "board": "lilygo-t-hmi",
+      "source": {
+        "type": "release",
+        "project": "KryonOS",
+        "release": "v3.0.0",
+        "release_url": "https://github.com/Haris16-code/KryonOS/releases/tag/v3.0.0",
+        "asset_base_url": "https://github.com/Haris16-code/KryonOS/releases/download/v3.0.0",
+        "spec_ref": "simulator/emu/KRYONOS-V3.0.0-PREP.md"
+      },
+      "flash": {
+        "chip": "esp32s3",
+        "flash_mode": "qio",
+        "flash_freq": "80m",
+        "flash_size": "16MB"
+      },
+      "merge": {
+        "tool": "esptool --chip esp32s3 merge-bin",
+        "offsets": {
+          "bootloader": "0x0",
+          "partitions": "0x8000",
+          "app": "0x10000"
+        }
+      },
+      "files": [
+        {
+          "path": "simulator/emu/firmware/kryonos-v3/lilygo-t-hmi/bootloader.bin",
+          "type": "split",
+          "role": "bootloader",
+          "offset": "0x0",
+          "sha256": "1776e4dd896a69d0a5c2e79957b0e2a88aa4129b1381d6478683515a1f6af343",
+          "release_asset": "KryonOS-v3.0.0-lilygo-t-hmi-bootloader-0x0000.bin",
+          "checksum_ref": "simulator/emu/firmware/kryonos-v3/lilygo-t-hmi/checksums.sha256"
+        },
+        {
+          "path": "simulator/emu/firmware/kryonos-v3/lilygo-t-hmi/partitions.bin",
+          "type": "split",
+          "role": "partitions",
+          "offset": "0x8000",
+          "sha256": "bd0f7954aca2ef7d925ee21aaa1f3dc8822d1d6ce5cbbd26a135e5886bfff6ce",
+          "release_asset": "KryonOS-v3.0.0-lilygo-t-hmi-partitions-0x8000.bin",
+          "checksum_ref": "simulator/emu/firmware/kryonos-v3/lilygo-t-hmi/checksums.sha256"
+        },
+        {
+          "path": "simulator/emu/firmware/kryonos-v3/lilygo-t-hmi/firmware.bin",
+          "type": "split",
+          "role": "app",
+          "offset": "0x10000",
+          "sha256": "c5a0aee2f77df1179d60ddf468ac36cb30851d59aa232f23d6a7c35aa8ac8821",
+          "release_asset": "KryonOS-v3.0.0-lilygo-t-hmi-firmware-0x10000.bin",
+          "checksum_ref": "simulator/emu/firmware/kryonos-v3/lilygo-t-hmi/checksums.sha256"
+        },
+        {
+          "path": "simulator/emu/firmware/kryonos-v3/lilygo-t-hmi/merged.bin",
+          "type": "merged",
+          "role": "flash_image",
+          "offset": "0x0",
+          "sha256": null,
+          "checksum_ref": null,
+          "notes": "Locally merged from verified split images; no separate checksum entry in checksums.sha256."
+        }
+      ],
+      "checksums": {
+        "file": "simulator/emu/firmware/kryonos-v3/lilygo-t-hmi/checksums.sha256",
+        "covers": [
+          "bootloader.bin",
+          "partitions.bin",
+          "firmware.bin"
+        ]
+      },
+      "caveats": [
+        "No ELF in release; parallel TFT and XPT2046/SDMMC specifics make live UI/input emulation highly limited in current stack."
+      ]
+    },
+    {
+      "id": "kryonos-v3-m5stack-cardputer",
+      "board": "m5stack-cardputer",
+      "source": {
+        "type": "release",
+        "project": "KryonOS",
+        "release": "v3.0.0",
+        "release_url": "https://github.com/Haris16-code/KryonOS/releases/tag/v3.0.0",
+        "asset_base_url": "https://github.com/Haris16-code/KryonOS/releases/download/v3.0.0",
+        "spec_ref": "simulator/emu/KRYONOS-V3.0.0-PREP.md"
+      },
+      "flash": {
+        "chip": "esp32s3",
+        "flash_mode": "qio",
+        "flash_freq": "80m",
+        "flash_size": "16MB"
+      },
+      "merge": {
+        "tool": "esptool --chip esp32s3 merge-bin",
+        "offsets": {
+          "bootloader": "0x0",
+          "partitions": "0x8000",
+          "app": "0x10000"
+        }
+      },
+      "files": [
+        {
+          "path": "simulator/emu/firmware/kryonos-v3/m5stack-cardputer/bootloader.bin",
+          "type": "split",
+          "role": "bootloader",
+          "offset": "0x0",
+          "sha256": "1776e4dd896a69d0a5c2e79957b0e2a88aa4129b1381d6478683515a1f6af343",
+          "release_asset": "KryonOS-v3.0.0-m5stack-cardputer-bootloader-0x0000.bin",
+          "checksum_ref": "simulator/emu/firmware/kryonos-v3/m5stack-cardputer/checksums.sha256"
+        },
+        {
+          "path": "simulator/emu/firmware/kryonos-v3/m5stack-cardputer/partitions.bin",
+          "type": "split",
+          "role": "partitions",
+          "offset": "0x8000",
+          "sha256": "f847fbb42780b47e31b109c26586d84f0518292d514901fb58610e397c55db14",
+          "release_asset": "KryonOS-v3.0.0-m5stack-cardputer-partitions-0x8000.bin",
+          "checksum_ref": "simulator/emu/firmware/kryonos-v3/m5stack-cardputer/checksums.sha256"
+        },
+        {
+          "path": "simulator/emu/firmware/kryonos-v3/m5stack-cardputer/firmware.bin",
+          "type": "split",
+          "role": "app",
+          "offset": "0x10000",
+          "sha256": "79ab495da2dc870519778cf49bbcef570a72441a975d56cd6fa35d680444f185",
+          "release_asset": "KryonOS-v3.0.0-m5stack-cardputer-firmware-0x10000.bin",
+          "checksum_ref": "simulator/emu/firmware/kryonos-v3/m5stack-cardputer/checksums.sha256"
+        },
+        {
+          "path": "simulator/emu/firmware/kryonos-v3/m5stack-cardputer/merged.bin",
+          "type": "merged",
+          "role": "flash_image",
+          "offset": "0x0",
+          "sha256": null,
+          "checksum_ref": null,
+          "notes": "Locally merged from verified split images; no separate checksum entry in checksums.sha256."
+        }
+      ],
+      "checksums": {
+        "file": "simulator/emu/firmware/kryonos-v3/m5stack-cardputer/checksums.sha256",
+        "covers": [
+          "bootloader.bin",
+          "partitions.bin",
+          "firmware.bin"
+        ]
+      },
+      "caveats": [
+        "No ELF in release; ST7789V2 240x135, keyboard matrix, and board-specific peripherals require host/part adaptation for interaction."
+      ]
+    }
+  ]
+}

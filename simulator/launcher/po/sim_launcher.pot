@@ -1,0 +1,2005 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-11-18 06:55+0000\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: audio_net.c:244
+msgid "esp-emu 1.1.0 (S3) with --i2s-wav"
+msgstr ""
+
+#: audio_net.c:245
+msgid "WAV file capture/playback supported; firmware may need correct init"
+msgstr ""
+
+#: audio_net.c:249
+msgid "esp-emu version/binary and firmware support"
+msgstr ""
+
+#: audio_net.c:250
+msgid ""
+"Flags --i2s-wav-in/--i2s-instance exist in docs/help; check on the real "
+"binary/flow"
+msgstr ""
+
+#: audio_net.c:253
+msgid "version/tool (e.g. 1.1+/external cosim) and firmware"
+msgstr ""
+
+#: audio_net.c:254
+msgid ""
+"Realtime PCM not guaranteed on the esp-emu 1.1.0 baseline; may require cosim/"
+"tools"
+msgstr ""
+
+#: audio_net.c:258
+msgid "Hint for UI/log; only --i2s-wav/--i2s-wav-in map to known args"
+msgstr ""
+
+#: audio_net.c:261
+msgid "firmware/host/permissions and network backend"
+msgstr ""
+
+#: audio_net.c:262
+msgid ""
+"--net user available in the baseline; STA/AP/services parity depends on "
+"firmware/validation"
+msgstr ""
+
+#: audio_net.c:265
+msgid "esp-emu version, --net user mode and supported rules"
+msgstr ""
+
+#: audio_net.c:266
+msgid ""
+"hostfwd mapped to --hostfwd when given; check syntax/effect on the binary"
+msgstr ""
+
+#: audio_net.c:269
+msgid "firmware and esp-emu Wi-Fi flags"
+msgstr ""
+
+#: audio_net.c:270
+msgid ""
+"SSID/pass/auth are placeholders that depend on firmware/flags (--wifi-*); "
+"parity not validated"
+msgstr ""
+
+#: audio_net.c:273
+msgid "version/tool, --elf for hooks and external HCI (Bumble/adapter)"
+msgstr ""
+
+#: audio_net.c:274
+msgid ""
+"Flag --ble-hci present; the full BLE workflow depends on ELF/runtime/host"
+msgstr ""
+
+#: sim_launcher.c:518
+#, c-format
+msgid "[profile] saved: %s%s"
+msgstr ""
+
+#: sim_launcher.c:518 sim_launcher.c:1451
+msgid " (active)"
+msgstr ""
+
+#: sim_launcher.c:521
+#, c-format
+msgid "[profile] failed to save %s"
+msgstr ""
+
+#: sim_launcher.c:685
+#, c-format
+msgid "# error building effective command"
+msgstr ""
+
+#: sim_launcher.c:855
+msgid "• board metadata unavailable\n"
+msgstr ""
+
+#: sim_launcher.c:858
+msgid "• SDMMC S3: --sd supported in esp-emu 1.1.0 (Card menu)\n"
+msgstr ""
+
+#: sim_launcher.c:861
+msgid "• Merge wizard: esptool merge-bin, dry-run and merge (conditional)\n"
+msgstr ""
+
+#: sim_launcher.c:862
+msgid "• Run modes and log filter/export: done\n"
+msgstr ""
+
+#: sim_launcher.c:895
+msgid "badges: board metadata unavailable"
+msgstr ""
+
+#: sim_launcher.c:925
+msgid "SD card image not found (esp-emu 1.1.0 supports --sd)"
+msgstr ""
+
+#: sim_launcher.c:925
+msgid "Card > Build image from folder… or ./start.sh card image"
+msgstr ""
+
+#: sim_launcher.c:926
+msgid ""
+"Parallel display needs runtime host/dedicated model (needs-runtime-host)"
+msgstr ""
+
+#: sim_launcher.c:926
+msgid "Prefer serial/headless"
+msgstr ""
+
+#: sim_launcher.c:928
+msgid "Live display depends on cosim/runtime host and compiled pins/resolution"
+msgstr ""
+
+#: sim_launcher.c:928
+msgid "Check board JSON, transport and runtime limits"
+msgstr ""
+
+#: sim_launcher.c:930
+msgid "Wi-Fi visible but conditional(version/tool/fw)"
+msgstr ""
+
+#: sim_launcher.c:930
+msgid "Check args/firmware/support"
+msgstr ""
+
+#: sim_launcher.c:931
+msgid "BLE visible but conditional(version/tool), usually needs ELF/HCI"
+msgstr ""
+
+#: sim_launcher.c:931
+msgid "Check support/args/ELF"
+msgstr ""
+
+#: sim_launcher.c:932
+msgid "Realtime audio conditional(version/tool)"
+msgstr ""
+
+#: sim_launcher.c:932
+msgid "Prefer I2S WAV from file"
+msgstr ""
+
+#: sim_launcher.c:965
+msgid ""
+"[launcher] pre-start validation FAILED (blocking errors). Start aborted."
+msgstr ""
+
+#: sim_launcher.c:973
+msgid "Cannot start the emulator"
+msgstr ""
+
+#: sim_launcher.c:974
+msgid "Pre-start validation failed. See the Validation panel."
+msgstr ""
+
+#: sim_launcher.c:978
+msgid ""
+"[launcher] pre-start validation OK (see warnings in the Validation panel)."
+msgstr ""
+
+#: sim_launcher.c:1065
+msgid "(no diagnostics)\n"
+msgstr ""
+
+#: sim_launcher.c:1087
+msgid "gpio snapshot hook not connected to runtime"
+msgstr ""
+
+#: sim_launcher.c:1088
+msgid "regs snapshot hook not connected to runtime"
+msgstr ""
+
+#: sim_launcher.c:1089
+msgid "mem snapshot hook not connected to runtime"
+msgstr ""
+
+#: sim_launcher.c:1090
+msgid "perf hook not connected to runtime"
+msgstr ""
+
+#: sim_launcher.c:1091
+msgid "cycles unavailable without runtime host"
+msgstr ""
+
+#: sim_launcher.c:1092
+msgid "mips unavailable without runtime host"
+msgstr ""
+
+#: sim_launcher.c:1096
+msgid "trace configured (--trace)"
+msgstr ""
+
+#: sim_launcher.c:1096
+msgid "trace not active"
+msgstr ""
+
+#: sim_launcher.c:1096
+msgid "esp-emu 1.1.0 + ELF recommended"
+msgstr ""
+
+#: sim_launcher.c:1097
+msgid "GDB stub configured (--gdb)"
+msgstr ""
+
+#: sim_launcher.c:1097
+msgid "GDB not active"
+msgstr ""
+
+#: sim_launcher.c:1108
+msgid "telemetry: (unavailable)"
+msgstr ""
+
+#: sim_launcher.c:1125
+#, c-format
+msgid "sd: ejected (%.80s)"
+msgstr ""
+
+#: sim_launcher.c:1127
+#, c-format
+msgid "sd: %.80s (missing)"
+msgstr ""
+
+#: sim_launcher.c:1132 sim_launcher.c:1627
+msgid "Board"
+msgstr ""
+
+#: sim_launcher.c:1132
+msgid "Chip"
+msgstr ""
+
+#: sim_launcher.c:1132
+msgid "Display"
+msgstr ""
+
+#: sim_launcher.c:1132 sim_launcher.c:2384
+msgid "Firmware"
+msgstr ""
+
+#: sim_launcher.c:1132 sim_launcher.c:2441
+msgid "ELF"
+msgstr ""
+
+#: sim_launcher.c:1132
+msgid "Cosim board"
+msgstr ""
+
+#: sim_launcher.c:1132
+msgid "SD card"
+msgstr ""
+
+#: sim_launcher.c:1132
+msgid "Network/Wi-Fi/BLE"
+msgstr ""
+
+#: sim_launcher.c:1132
+msgid "Audio"
+msgstr ""
+
+#: sim_launcher.c:1132
+msgid "Console/UART"
+msgstr ""
+
+#: sim_launcher.c:1132
+msgid "esp-emu"
+msgstr ""
+
+#: sim_launcher.c:1132
+msgid "Command"
+msgstr ""
+
+#: sim_launcher.c:1142 sim_launcher.c:1176
+msgid "(none)"
+msgstr ""
+
+#: sim_launcher.c:1144
+msgid "on"
+msgstr ""
+
+#: sim_launcher.c:1145 sim_launcher.c:1177
+msgid "off"
+msgstr ""
+
+#: sim_launcher.c:1169
+#, c-format
+msgid "%dx%d  ·  rotation %d  ·  scale %d"
+msgstr ""
+
+#: sim_launcher.c:1174
+msgid "off (--no-elf)"
+msgstr ""
+
+#: sim_launcher.c:1185
+msgid "Network"
+msgstr ""
+
+#: sim_launcher.c:1206 sim_launcher.c:2667
+msgid "Ready to start"
+msgstr ""
+
+#: sim_launcher.c:1206
+msgid "Backend running (no canvas)"
+msgstr ""
+
+#: sim_launcher.c:1206
+msgid "Starting…"
+msgstr ""
+
+#: sim_launcher.c:1219
+msgid "attached(canvas), cosim connecting"
+msgstr ""
+
+#: sim_launcher.c:1220 sim_launcher.c:1226
+msgid "waiting for canvas"
+msgstr ""
+
+#: sim_launcher.c:1225
+msgid "backend-only (--no-host, no embed)"
+msgstr ""
+
+#: sim_launcher.c:1225
+msgid "ui+embedded host (sim_host/SDL in GTK X11)"
+msgstr ""
+
+#: sim_launcher.c:1226
+msgid "attached, cosim connecting"
+msgstr ""
+
+#: sim_launcher.c:1226
+msgid "stopped"
+msgstr ""
+
+#: sim_launcher.c:1226
+msgid "external/conditional"
+msgstr ""
+
+#: sim_launcher.c:1233
+msgid "Running"
+msgstr ""
+
+#: sim_launcher.c:1233
+msgid "Stopping"
+msgstr ""
+
+#: sim_launcher.c:1233 sim_launcher.c:2374
+msgid "Stopped"
+msgstr ""
+
+#: sim_launcher.c:1237
+#, c-format
+msgid "cosim connecting…"
+msgstr ""
+
+#: sim_launcher.c:1250
+msgid "(no profile)"
+msgstr ""
+
+#: sim_launcher.c:1251
+#, c-format
+msgid "profile: %s%s · %s%s · %s%s · esp-emu %s%s · %s"
+msgstr ""
+
+#: sim_launcher.c:1258 sim_launcher.c:2370
+msgid "STOPPED"
+msgstr ""
+
+#: sim_launcher.c:1261
+msgid "RUNNING"
+msgstr ""
+
+#: sim_launcher.c:1261
+msgid "STARTING…"
+msgstr ""
+
+#: sim_launcher.c:1262
+msgid "STOPPING…"
+msgstr ""
+
+#: sim_launcher.c:1439
+#, c-format
+msgid "[profile] error loading '%s'"
+msgstr ""
+
+#: sim_launcher.c:1451
+#, c-format
+msgid "[profile] loaded: %s%s"
+msgstr ""
+
+#: sim_launcher.c:1465
+#, c-format
+msgid "New profile"
+msgstr ""
+
+#: sim_launcher.c:1467
+msgid ""
+"[profile] new profile created (defaults). Adjust, then use Save/Save as."
+msgstr ""
+
+#: sim_launcher.c:1486
+#, c-format
+msgid "[profile] duplicated to: %s (active)"
+msgstr ""
+
+#: sim_launcher.c:1488
+#, c-format
+msgid "[profile] failed to duplicate to: %s"
+msgstr ""
+
+#: sim_launcher.c:1498
+#, c-format
+msgid "[profile] error importing launcher.conf: %s"
+msgstr ""
+
+#: sim_launcher.c:1522
+#, c-format
+msgid ""
+"[profile] imported/migrated from %s to active profile '%s' (use Save to "
+"persist the JSON)"
+msgstr ""
+
+#: sim_launcher.c:1530
+#, c-format
+msgid "[profile] exported to: %s (active profile kept: %s)"
+msgstr ""
+
+#: sim_launcher.c:1532
+#, c-format
+msgid "[profile] failed to export to: %s"
+msgstr ""
+
+#: sim_launcher.c:1544
+msgid "[launcher] preflight/validation updated"
+msgstr ""
+
+#: sim_launcher.c:1545
+msgid "[launcher] effective command copied"
+msgstr ""
+
+#: sim_launcher.c:1553
+msgid ""
+"[caps] probe failed/incomplete (binary/args may be unavailable; conditional)"
+msgstr ""
+
+#: sim_launcher.c:1593
+msgid "Export logs (text)"
+msgstr ""
+
+#: sim_launcher.c:1596
+msgid "[logs] exported (filtered)"
+msgstr ""
+
+#: sim_launcher.c:1597
+msgid "[logs] failed to export"
+msgstr ""
+
+#: sim_launcher.c:1608 sim_launcher.c:2774
+msgid "Validate"
+msgstr ""
+
+#: sim_launcher.c:1608
+msgid "Dry-run"
+msgstr ""
+
+#: sim_launcher.c:1608
+msgid "Merge"
+msgstr ""
+
+#: sim_launcher.c:1608
+msgid "Close"
+msgstr ""
+
+#: sim_launcher.c:1623
+msgid "Include FS (LittleFS)"
+msgstr ""
+
+#: sim_launcher.c:1624
+msgid "Overwrite output"
+msgstr ""
+
+#: sim_launcher.c:1690
+msgid ""
+"SD card is not part of the merged image: esp-emu 1.1.0 mounts it with --sd "
+"(Card menu)."
+msgstr ""
+
+#: sim_launcher.c:1628
+msgid "Bootloader"
+msgstr ""
+
+#: sim_launcher.c:1629
+msgid "Partitions"
+msgstr ""
+
+#: sim_launcher.c:1630
+msgid "App"
+msgstr ""
+
+#: sim_launcher.c:1631
+msgid "FS image"
+msgstr ""
+
+#: sim_launcher.c:1632
+msgid "Output"
+msgstr ""
+
+#: sim_launcher.c:1633
+msgid "Flash mode/freq/size"
+msgstr ""
+
+#: sim_launcher.c:1666
+msgid "[merge] merged output created/updated"
+msgstr ""
+
+#: sim_launcher.c:1690
+#, c-format
+msgid "Failed to discover parts in '%s'"
+msgstr ""
+
+#: sim_launcher.c:1691
+#, c-format
+msgid "Discovered %d part(s) in '%s'"
+msgstr ""
+
+#: sim_launcher.c:1703
+msgid "No part selected/named"
+msgstr ""
+
+#: sim_launcher.c:1707
+msgid "configured (cosim runtime pending)"
+msgstr ""
+
+#: sim_launcher.c:1708
+#, c-format
+msgid "Instance '%s' configured for part '%s' (needs-runtime-host)"
+msgstr ""
+
+#: sim_launcher.c:1718
+#, c-format
+msgid "Instance removed: %s"
+msgstr ""
+
+#: sim_launcher.c:1720
+msgid "Instance not found"
+msgstr ""
+
+#: sim_launcher.c:1731
+msgid "Validation passed with no errors (conflicts/capabilities checked)"
+msgstr ""
+
+#: sim_launcher.c:1731
+msgid "Validation found errors/conflicts"
+msgstr ""
+
+#: sim_launcher.c:1733
+msgid ""
+"Cosim runtime integration: placeholder (needs-runtime-host / conditional esp-"
+"emu)."
+msgstr ""
+
+#: sim_launcher.c:1762
+msgid "Select merged firmware"
+msgstr ""
+
+#: sim_launcher.c:1763
+msgid "Select ELF"
+msgstr ""
+
+#: sim_launcher.c:1764
+msgid "Select cosim board JSON"
+msgstr ""
+
+#: sim_launcher.c:1765
+msgid "Select/set the profile JSON path"
+msgstr ""
+
+#: sim_launcher.c:1766
+msgid "Select LittleFS image"
+msgstr ""
+
+#: sim_launcher.c:1767
+msgid "Select I2S audio out (WAV)"
+msgstr ""
+
+#: sim_launcher.c:1768
+msgid "Select I2S audio in (WAV)"
+msgstr ""
+
+#: sim_launcher.c:1769
+msgid "Select esp-emu (capabilities probe)"
+msgstr ""
+
+#: sim_launcher.c:1770
+msgid "Select trace file"
+msgstr ""
+
+#: sim_launcher.c:1773
+msgid "Open/Load profile JSON"
+msgstr ""
+
+#: sim_launcher.c:1775
+msgid "Save profile as..."
+msgstr ""
+
+#: sim_launcher.c:1776
+msgid "Duplicate profile to..."
+msgstr ""
+
+#: sim_launcher.c:1777
+msgid "Import/migrate launcher.conf"
+msgstr ""
+
+#: sim_launcher.c:1778
+msgid "Export profile JSON"
+msgstr ""
+
+#: sim_launcher.c:1813
+msgid "[workflow] file opened"
+msgstr ""
+
+#: sim_launcher.c:1815
+msgid "[workflow] open failed (give a valid path)"
+msgstr ""
+
+#: sim_launcher.c:1824
+msgid "[workflow] file saved"
+msgstr ""
+
+#: sim_launcher.c:1825
+msgid "[workflow] save failed"
+msgstr ""
+
+#: sim_launcher.c:1831
+msgid "[workflow] build finished"
+msgstr ""
+
+#: sim_launcher.c:1832
+msgid "Build finished (see logs). Tools/exit depend on the environment."
+msgstr ""
+
+#: sim_launcher.c:1841
+msgid "[workflow] running build..."
+msgstr ""
+
+#: sim_launcher.c:1842
+msgid "Running: build via start.sh (conditional: toolchain present)"
+msgstr ""
+
+#: sim_launcher.c:1844
+msgid "[workflow] failed to start build (tool missing?)"
+msgstr ""
+
+#: sim_launcher.c:1857
+msgid "[card] emulator running: controlled restart to apply the card"
+msgstr ""
+
+#: sim_launcher.c:1864
+msgid "Replace SD card image (restarts the emulator)"
+msgstr ""
+
+#: sim_launcher.c:1866
+msgid "Images (*.img)"
+msgstr ""
+
+#: sim_launcher.c:1867
+msgid "All files"
+msgstr ""
+
+#: sim_launcher.c:1880
+#, c-format
+msgid "[card] image replaced: %s"
+msgstr ""
+
+#: sim_launcher.c:1887
+msgid "[card] card ejected (--no-sd on next start)"
+msgstr ""
+
+#: sim_launcher.c:1891
+#, c-format
+msgid "[card] finished (%s, state %d)"
+msgstr ""
+
+#: sim_launcher.c:1891
+msgid "ERROR"
+msgstr ""
+
+#: sim_launcher.c:1899
+msgid "[card] another build/card process is still running"
+msgstr ""
+
+#: sim_launcher.c:1903
+msgid "[card] failed to start start.sh card"
+msgstr ""
+
+#: sim_launcher.c:1911
+msgid ""
+"Stop the emulator before rebuilding the card image (the image is mounted by "
+"esp-emu)."
+msgstr ""
+
+#: sim_launcher.c:1914
+msgid "Folder with the card contents"
+msgstr ""
+
+#: sim_launcher.c:1917
+#, c-format
+msgid ""
+"Building the image from a folder REPLACES the image %s.\n"
+"What the firmware wrote to the card is lost. Continue?"
+msgstr ""
+
+#: sim_launcher.c:1928
+msgid "Destination folder for extracting the card"
+msgstr ""
+
+#: sim_launcher.c:1940
+msgid "[card] could not open simulator/SD_Card (xdg-open)"
+msgstr ""
+
+#: sim_launcher.c:1951 sim_launcher.c:2405
+msgid "PROFILE / FIRMWARE"
+msgstr ""
+
+#: sim_launcher.c:1951
+msgid "RUNTIME / AUDIO / NETWORK"
+msgstr ""
+
+#: sim_launcher.c:1951 sim_launcher.c:2383
+msgid "Merge / Run"
+msgstr ""
+
+#: sim_launcher.c:1951
+msgid "STORAGE / PARTS"
+msgstr ""
+
+#: sim_launcher.c:2052
+msgid ""
+"ESP32 Simulator (Unified)\n"
+"GTK3 front-end for esp-emu: profile/config, embedded canvas (sim_host/SDL) "
+"and SD card."
+msgstr ""
+
+#: sim_launcher.c:2064
+msgid "Restart the launcher to apply the language."
+msgstr ""
+
+#: sim_launcher.c:2268
+msgid "Debug/Profiler (available data, factual)\n"
+msgstr ""
+
+#: sim_launcher.c:2269
+msgid "configured (--gdb, conditional esp-emu+ELF+gdb)"
+msgstr ""
+
+#: sim_launcher.c:2269 sim_launcher.c:2272
+msgid "inactive"
+msgstr ""
+
+#: sim_launcher.c:2272
+msgid "configured (--trace, conditional)"
+msgstr ""
+
+#: sim_launcher.c:2283
+#, c-format
+msgid "Process: running=%s pid=%d uptime=%llums\n"
+msgstr ""
+
+#: sim_launcher.c:2284
+msgid "Process: unavailable\n"
+msgstr ""
+
+#: sim_launcher.c:2286
+msgid ""
+"Limits: GPIO/regs/mem/perf/cycles/mips/PC-level live = needs-runtime-host "
+"(hooks not connected to the runtime).\n"
+msgstr ""
+
+#: sim_launcher.c:2287
+msgid ""
+"sdmmc S3: --sd supported in esp-emu 1.1.0. ELF/trace/gdb = "
+"conditional(version/tool).\n"
+msgstr ""
+
+#: sim_launcher.c:2293
+msgid "GPIO/Pins/Claims (available state)\n"
+msgstr ""
+
+#: sim_launcher.c:2310
+msgid ""
+"Dynamic mappings of pins/bus/controllers/protocols/input: conditional/needs-"
+"runtime-host (compile-time/partial runtime host).\n"
+msgstr ""
+
+#: sim_launcher.c:2311
+msgid "Live GPIO telemetry/runtime claims not connected (hook missing).\n"
+msgstr ""
+
+#: sim_launcher.c:2342
+msgid "ESP32 Simulator (Unified)"
+msgstr ""
+
+#: sim_launcher.c:2357
+msgid "▶ Start"
+msgstr ""
+
+#: sim_launcher.c:2357
+msgid "■ Stop"
+msgstr ""
+
+#: sim_launcher.c:2357
+msgid "↻ Restart"
+msgstr ""
+
+#: sim_launcher.c:2359 sim_launcher.c:2681
+msgid "Simulator → Start (Ctrl+R)"
+msgstr ""
+
+#: sim_launcher.c:2359
+msgid "Simulator → Stop (Ctrl+.)"
+msgstr ""
+
+#: sim_launcher.c:2359
+msgid "Simulator → Restart (Ctrl+Shift+R)"
+msgstr ""
+
+#: sim_launcher.c:2383
+msgid "Profile"
+msgstr ""
+
+#: sim_launcher.c:2383
+msgid "Runtime"
+msgstr ""
+
+#: sim_launcher.c:2383
+msgid "Storage"
+msgstr ""
+
+#: sim_launcher.c:2384
+msgid "Audio · Network"
+msgstr ""
+
+#: sim_launcher.c:2384
+msgid "Merge · Run modes"
+msgstr ""
+
+#: sim_launcher.c:2384
+msgid "Parts · LittleFS"
+msgstr ""
+
+#: sim_launcher.c:2407
+msgid "Close panel"
+msgstr ""
+
+#: sim_launcher.c:2413
+msgid "Active profile (JSON)"
+msgstr ""
+
+#: sim_launcher.c:2413 sim_launcher.c:2440 sim_launcher.c:2441
+#: sim_launcher.c:2444 sim_launcher.c:2502 sim_launcher.c:2513
+#: sim_launcher.c:2517 sim_launcher.c:2518 sim_launcher.c:2531
+msgid "Browse"
+msgstr ""
+
+#: sim_launcher.c:2418
+msgid "Profile/Firmware"
+msgstr ""
+
+#: sim_launcher.c:2425
+msgid "Use ELF (--elf)"
+msgstr ""
+
+#: sim_launcher.c:2426
+msgid "cosim board json"
+msgstr ""
+
+#: sim_launcher.c:2437
+msgid "Board preset"
+msgstr ""
+
+#: sim_launcher.c:2438
+msgid "Target chip (esp-emu)"
+msgstr ""
+
+#: sim_launcher.c:2439
+msgid "Firmware selection"
+msgstr ""
+
+#: sim_launcher.c:2440
+msgid "Merged firmware"
+msgstr ""
+
+#: sim_launcher.c:2443
+msgid "Custom firmware path (legacy)"
+msgstr ""
+
+#: sim_launcher.c:2444
+msgid "Cosim board JSON"
+msgstr ""
+
+#: sim_launcher.c:2445
+msgid "LCD W (0=default)"
+msgstr ""
+
+#: sim_launcher.c:2446
+msgid "LCD H (0=default)"
+msgstr ""
+
+#: sim_launcher.c:2447
+msgid "Scale"
+msgstr ""
+
+#: sim_launcher.c:2448
+msgid "HW rot"
+msgstr ""
+
+#: sim_launcher.c:2452
+msgid "Runtime/Audio/Network"
+msgstr ""
+
+#: sim_launcher.c:2458
+msgid "Cosim via Unix socket bridge (socat, conditional)"
+msgstr ""
+
+#: sim_launcher.c:2460
+msgid "extra args for esp-emu (after --)"
+msgstr ""
+
+#: sim_launcher.c:2461
+msgid "emu_runtime.esp_emu_path (basic)"
+msgstr ""
+
+#: sim_launcher.c:2462
+msgid "Audio enabled"
+msgstr ""
+
+#: sim_launcher.c:2462
+msgid "Realtime audio (conditional)"
+msgstr ""
+
+#: sim_launcher.c:2463
+msgid "I2S WAV in (conditional)"
+msgstr ""
+
+#: sim_launcher.c:2464
+msgid "net enabled (user mode legacy)"
+msgstr ""
+
+#: sim_launcher.c:2464
+msgid "Wi-Fi (conditional)"
+msgstr ""
+
+#: sim_launcher.c:2464
+msgid "BLE (conditional)"
+msgstr ""
+
+#: sim_launcher.c:2465
+msgid "LittleFS enabled (conditional)"
+msgstr ""
+
+#: sim_launcher.c:2467
+msgid "partition label"
+msgstr ""
+
+#: sim_launcher.c:2468
+msgid "mount path"
+msgstr ""
+
+#: sim_launcher.c:2469
+msgid "offset"
+msgstr ""
+
+#: sim_launcher.c:2470
+msgid "size"
+msgstr ""
+
+#: sim_launcher.c:2471
+msgid "SD (legacy: use the Card menu)"
+msgstr ""
+
+#: sim_launcher.c:2472
+msgid "SD image (conditional)"
+msgstr ""
+
+#: sim_launcher.c:2480
+msgid "audio backend hint"
+msgstr ""
+
+#: sim_launcher.c:2481
+msgid "Network enabled"
+msgstr ""
+
+#: sim_launcher.c:2482
+msgid "user/tap/openeth (conditional)"
+msgstr ""
+
+#: sim_launcher.c:2483
+msgid "hostfwd rules ; separated"
+msgstr ""
+
+#: sim_launcher.c:2491
+msgid "BLE HCI (conditional)"
+msgstr ""
+
+#: sim_launcher.c:2492
+msgid "esp-emu path for caps probe"
+msgstr ""
+
+#: sim_launcher.c:2494
+msgid "Refresh caps"
+msgstr ""
+
+#: sim_launcher.c:2496
+msgid "Run mode"
+msgstr ""
+
+msgid "Instance"
+msgstr ""
+
+msgid "Emulator instance 0-99. Ports derive from it: cosim 5591+10N, UART 5555+10N, control 5556+10N, GDB 3333+10N"
+msgstr ""
+
+#: sim_launcher.c:2498
+msgid "Cosim Unix path"
+msgstr ""
+
+#: sim_launcher.c:2499
+msgid "UART TCP port (from instance)"
+msgstr ""
+
+#: sim_launcher.c:2500
+msgid "Console mode (tcp/stdio/pty/none)"
+msgstr ""
+
+#: sim_launcher.c:2501
+msgid "esp-emu path (basic)"
+msgstr ""
+
+#: sim_launcher.c:2502
+msgid "esp-emu caps path (probe)"
+msgstr ""
+
+#: sim_launcher.c:2504
+msgid "GDB stub (--gdb, conditional tool)"
+msgstr ""
+
+#: sim_launcher.c:2506
+msgid "Halt on start (--gdb-halt)"
+msgstr ""
+
+#: sim_launcher.c:2508
+msgid "GDB port"
+msgstr ""
+
+#: sim_launcher.c:2510
+msgid "Trace (--trace, conditional tool)"
+msgstr ""
+
+#: sim_launcher.c:2513
+msgid "Trace path"
+msgstr ""
+
+#: sim_launcher.c:2514
+msgid "Extra args"
+msgstr ""
+
+#: sim_launcher.c:2517
+msgid "Audio out path"
+msgstr ""
+
+#: sim_launcher.c:2518
+msgid "Audio in path"
+msgstr ""
+
+#: sim_launcher.c:2519
+msgid "I2S instance"
+msgstr ""
+
+#: sim_launcher.c:2520
+msgid "Audio backend hint"
+msgstr ""
+
+#: sim_launcher.c:2522
+msgid "Net mode"
+msgstr ""
+
+#: sim_launcher.c:2523
+msgid "Hostfwd (; sep)"
+msgstr ""
+
+#: sim_launcher.c:2526
+msgid "Wi-Fi SSID"
+msgstr ""
+
+#: sim_launcher.c:2527
+msgid "Wi-Fi password"
+msgstr ""
+
+#: sim_launcher.c:2528
+msgid "Wi-Fi auth"
+msgstr ""
+
+#: sim_launcher.c:2529
+msgid "BLE HCI"
+msgstr ""
+
+#: sim_launcher.c:2531
+msgid "LittleFS image"
+msgstr ""
+
+#: sim_launcher.c:2532
+msgid "LittleFS label"
+msgstr ""
+
+#: sim_launcher.c:2533
+msgid "LittleFS mount"
+msgstr ""
+
+#: sim_launcher.c:2534
+msgid "LittleFS offset"
+msgstr ""
+
+#: sim_launcher.c:2535
+msgid "LittleFS size"
+msgstr ""
+
+#: sim_launcher.c:2537
+msgid "SD mode"
+msgstr ""
+
+#: sim_launcher.c:2538
+msgid "SD image"
+msgstr ""
+
+#: sim_launcher.c:2539
+msgid "SD slot"
+msgstr ""
+
+#: sim_launcher.c:2540
+msgid "SD CS pin"
+msgstr ""
+
+#: sim_launcher.c:2545
+msgid "Merge wizard and profile import/export"
+msgstr ""
+
+#: sim_launcher.c:2547
+msgid ""
+"Structure ready for the merge wizard (boot/part/app/fs, offsets, esptool dry-"
+"run) and profile import/export."
+msgstr ""
+
+#: sim_launcher.c:2548
+msgid "Open merge wizard"
+msgstr ""
+
+#: sim_launcher.c:2549
+msgid "Run modes and advanced logs"
+msgstr ""
+
+#: sim_launcher.c:2551
+msgid ""
+"Basic telemetry is in the Processes/Telemetry tabs. Run modes and advanced "
+"filters: planned."
+msgstr ""
+
+#: sim_launcher.c:2552
+msgid ""
+"Run mode and backend-only/--no-host are available in Runtime/Audio/Network. "
+"Log filters/export are available in the log panel."
+msgstr ""
+
+#: sim_launcher.c:2556
+msgid "Storage/Parts"
+msgstr ""
+
+#: sim_launcher.c:2560
+msgid "Parts dir (.wasm):"
+msgstr ""
+
+#: sim_launcher.c:2562
+msgid "Scan"
+msgstr ""
+
+#: sim_launcher.c:2563
+msgid "Check conflicts"
+msgstr ""
+
+#: sim_launcher.c:2568
+msgid "instance id"
+msgstr ""
+
+#: sim_launcher.c:2569
+msgid "part name (empty=1st)"
+msgstr ""
+
+#: sim_launcher.c:2570
+msgid "Instance ID"
+msgstr ""
+
+#: sim_launcher.c:2571
+msgid "Part name"
+msgstr ""
+
+#: sim_launcher.c:2572
+msgid "Add/Config"
+msgstr ""
+
+#: sim_launcher.c:2573
+msgid "Remove"
+msgstr ""
+
+#: sim_launcher.c:2577
+msgid ""
+"Parts WASM/sidecar: discovery, claims/wiring, conflicts and capabilities. "
+"Status: conditional/needs-runtime-host (no real cosim runtime integration; "
+"hooks/placeholders)."
+msgstr ""
+
+#: sim_launcher.c:2602
+msgid "Validation/Capabilities"
+msgstr ""
+
+#: sim_launcher.c:2606
+msgid "Effective command"
+msgstr ""
+
+#: sim_launcher.c:2610
+msgid "Processes/Telemetry"
+msgstr ""
+
+#: sim_launcher.c:2614
+msgid "Debug/GDB/Trace"
+msgstr ""
+
+#: sim_launcher.c:2618
+msgid "GPIO/Pins (state)"
+msgstr ""
+
+#: sim_launcher.c:2622
+msgid "file to open/edit (optional)"
+msgstr ""
+
+#: sim_launcher.c:2623
+msgid "Open"
+msgstr ""
+
+#: sim_launcher.c:2624 sim_launcher.c:2761
+msgid "Save"
+msgstr ""
+
+#: sim_launcher.c:2625
+msgid "Build (start.sh)"
+msgstr ""
+
+#: sim_launcher.c:2626
+msgid "Build cmd:"
+msgstr ""
+
+#: sim_launcher.c:2631
+msgid "File:"
+msgstr ""
+
+#: sim_launcher.c:2644
+msgid "Code/Build/Run"
+msgstr ""
+
+#: sim_launcher.c:2652
+msgid "Canvas: ui+embedded host (sim_host) | detached"
+msgstr ""
+
+#: sim_launcher.c:2669
+msgid "Effective configuration of the active profile"
+msgstr ""
+
+#: sim_launcher.c:2699
+msgid "text filter (substring)"
+msgstr ""
+
+#: sim_launcher.c:2715
+msgid "Follow"
+msgstr ""
+
+#: sim_launcher.c:2716
+msgid "Clear"
+msgstr ""
+
+#: sim_launcher.c:2717
+msgid "Export..."
+msgstr ""
+
+#: sim_launcher.c:2718
+msgid "Logs:"
+msgstr ""
+
+#: sim_launcher.c:2728
+msgid "esp-emu log"
+msgstr ""
+
+#: sim_launcher.c:2729
+msgid "host/cosim log"
+msgstr ""
+
+#: sim_launcher.c:2734
+msgid ""
+"Telemetry is integrated in 'Processes/Telemetry'. Filters/export apply to "
+"the unified buffer (console_log)."
+msgstr ""
+
+#: sim_launcher.c:2737
+msgid "Info"
+msgstr ""
+
+#: sim_launcher.c:2745
+msgid ""
+"Release without ELF: use --no-elf; reduces symbols/BLE intercepts/hooks/"
+"debug (conditional)."
+msgstr ""
+
+#: sim_launcher.c:2746
+msgid ""
+"Wi-Fi: conditional(version/tool/fw). Visible in the UI; the full flow "
+"depends on support/args/firmware."
+msgstr ""
+
+#: sim_launcher.c:2747
+msgid ""
+"BLE: conditional(version/tool). Usually needs external ELF/HCI; not "
+"guaranteed."
+msgstr ""
+
+#: sim_launcher.c:2748
+msgid ""
+"Realtime audio: conditional(version/tool). Prefer I2S WAV from file when "
+"applicable."
+msgstr ""
+
+#: sim_launcher.c:2749
+msgid ""
+"LittleFS conditional (image/layout). SD: Card menu (esp-emu 1.1.0 --sd)."
+msgstr ""
+
+#: sim_launcher.c:2750
+msgid "Optional LittleFS image. SD: Card menu (esp-emu 1.1.0 --sd)."
+msgstr ""
+
+#: sim_launcher.c:2751 sim_launcher.c:2752
+msgid ""
+"Pins/resolution/panel largely compiled (panel_config.h/lcd_touch_host.c). "
+"Partial runtime override."
+msgstr ""
+
+#: sim_launcher.c:2753
+msgid ""
+"Cosim: --cosim-board in-process preferred; TCP/unix/bridge conditional on "
+"version/host."
+msgstr ""
+
+#: sim_launcher.c:2754
+msgid "Extra args passed to esp-emu (unknown flags may fail)."
+msgstr ""
+
+#: sim_launcher.c:2758
+msgid "_Profile"
+msgstr ""
+
+#: sim_launcher.c:2759
+msgid "New"
+msgstr ""
+
+#: sim_launcher.c:2760
+msgid "Open…"
+msgstr ""
+
+#: sim_launcher.c:2762
+msgid "Save as…"
+msgstr ""
+
+#: sim_launcher.c:2763
+msgid "Duplicate"
+msgstr ""
+
+#: sim_launcher.c:2764
+msgid "Import conf"
+msgstr ""
+
+#: sim_launcher.c:2765
+msgid "Export"
+msgstr ""
+
+msgid "Quit"
+msgstr ""
+
+#: sim_launcher.c:2766
+msgid "_Simulator"
+msgstr ""
+
+#: sim_launcher.c:2767
+msgid "Start"
+msgstr ""
+
+#: sim_launcher.c:2768
+msgid "Stop"
+msgstr ""
+
+#: sim_launcher.c:2769
+msgid "Restart"
+msgstr ""
+
+#: sim_launcher.c:2775
+msgid "Copy command"
+msgstr ""
+
+#: sim_launcher.c:2776
+msgid "_Card"
+msgstr ""
+
+#: sim_launcher.c:2777
+msgid "Replace image… (restarts the emulator)"
+msgstr ""
+
+#: sim_launcher.c:2778
+msgid ""
+"esp-emu 1.1.0 cannot swap the card while running: if the emulator is "
+"running, it is restarted in a controlled way."
+msgstr ""
+
+#: sim_launcher.c:2779
+msgid "Eject (restarts the emulator)"
+msgstr ""
+
+#: sim_launcher.c:2780
+msgid ""
+"Starts without the card (--no-sd). esp-emu 1.1.0 does not remove the card "
+"while running: controlled restart."
+msgstr ""
+
+#: sim_launcher.c:2782
+msgid "Build image from folder…"
+msgstr ""
+
+#: sim_launcher.c:2783
+msgid ""
+"./start.sh card image --force <folder> <image>: REPLACES the image (what the "
+"firmware wrote to the card is lost)."
+msgstr ""
+
+#: sim_launcher.c:2784
+msgid "Extract image to folder…"
+msgstr ""
+
+#: sim_launcher.c:2785
+msgid "Open card folder"
+msgstr ""
+
+#: sim_launcher.c:2786
+msgid "_View"
+msgstr ""
+
+#: sim_launcher.c:2787
+msgid "Configuration panel"
+msgstr ""
+
+#: sim_launcher.c:2788
+msgid "Bottom panel"
+msgstr ""
+
+#: sim_launcher.c:2789
+msgid "Status bar"
+msgstr ""
+
+#: sim_launcher.c:2790
+msgid "Logs"
+msgstr ""
+
+#: sim_launcher.c:2791
+msgid "GPIO/Pins window"
+msgstr ""
+
+#: sim_launcher.c:2791
+msgid "Shows the bottom panel on the GPIO/Pins tab"
+msgstr ""
+
+#: sim_launcher.c:2793
+msgid "Language"
+msgstr ""
+
+#: sim_launcher.c:2803
+msgid "Automatic"
+msgstr ""
+
+#: sim_launcher.c:2812
+msgid "_Help"
+msgstr ""
+
+#: sim_launcher.c:2813
+msgid "About"
+msgstr ""
+
+#: sim_launcher.c:2816
+msgid "▤ Console / Logs"
+msgstr ""
+
+#: sim_launcher.c:2817
+msgid "Show/hide the bottom panel (validation, command, telemetry, logs)"
+msgstr ""
+
+#: sim_launcher.c:2891
+msgid ""
+"Merge wizard, run modes (UI and backend-only), log filters and export, and "
+"the capability, probe, storage, audio and network UI are integrated (partial "
+"where conditional or blocked)."
+msgstr ""
+
+#: sim_launcher.c:2892
+msgid ""
+"Telemetry and parts are integrated in the UI with state and capabilities; "
+"deep runtime data and WASM execution depend on the host, the emulator and "
+"tools (needs runtime host, conditional)."
+msgstr ""
+
+#: sim_launcher.c:2894
+msgid ""
+"Limits: SD via --sd (esp-emu 1.1.0, Card menu), release without ELF "
+"conditional, pins/resolution partial runtime/compiled."
+msgstr ""
+
+#: telemetry.c:30
+msgid "GPIO unavailable: requires a connected runtime/host"
+msgstr ""
+
+#: telemetry.c:32 telemetry.c:314
+msgid "Registers unavailable: requires a connected runtime/host"
+msgstr ""
+
+#: telemetry.c:34 telemetry.c:318
+msgid "Memory unavailable: requires a connected runtime/host"
+msgstr ""
+
+#: telemetry.c:36
+msgid "Perf unavailable: requires a connected runtime/host"
+msgstr ""
+
+#: telemetry.c:38 telemetry.c:324
+msgid "Cycles unavailable without instrumentation/an exposed counter"
+msgstr ""
+
+#: telemetry.c:40 telemetry.c:326
+msgid "MIPS unavailable without an exposed cycle counter"
+msgstr ""
+
+#: telemetry.c:42 telemetry.c:334
+msgid ""
+"Chrome trace available with --trace <FILE> + --elf; stream/runtime deep data "
+"requires host"
+msgstr ""
+
+#: telemetry.c:44 telemetry.c:342
+msgid ""
+"GDB stub available with --gdb <PORT> [--gdb-halt]; runtime data requires "
+"host/client"
+msgstr ""
+
+#: telemetry.c:292
+msgid "Chrome trace configured (--trace) with ELF; file/state observable"
+msgstr ""
+
+#: telemetry.c:295
+msgid "Trace needs --elf for full context/timeline; runtime stream needs host"
+msgstr ""
+
+#: telemetry.c:300
+msgid ""
+"GDB stub configured (--gdb); runtime attach/data needs a GDB client/host"
+msgstr ""
+
+#: telemetry.c:310
+msgid "GPIO deep data unavailable: requires a connected runtime/host"
+msgstr ""
+
+#: telemetry.c:322
+msgid "Perf/cycles/MIPS unavailable: requires a connected runtime/host"
+msgstr ""
+
+#: telemetry.c:330
+msgid ""
+"Trace configured (file/endpoint observable); runtime deep stream requires "
+"host"
+msgstr ""
+
+#: telemetry.c:338
+msgid "GDB endpoint configured; runtime attach/data requires a client/host"
+msgstr ""
+
+#: sim_launcher.c:2849 sim_launcher.c:2850 help_ui.c:137
+msgid "Help contents"
+msgstr ""
+
+#: sim_launcher.c:2851 help_ui.c:185
+msgid "Keyboard shortcuts"
+msgstr ""
+
+#: help_ui.c:156
+msgid "Help file not found. Expected: %s (relative to the repository root)."
+msgstr ""
+
+#: help_ui.c:173
+msgid "Start the emulator"
+msgstr ""
+
+#: help_ui.c:174
+msgid "Stop the emulator"
+msgstr ""
+
+#: help_ui.c:175
+msgid "Restart the emulator"
+msgstr ""
+
+#: help_ui.c:176
+msgid "Quit the launcher"
+msgstr ""
+
+#: help_ui.c:211
+msgid "Project: ESP32 PC Control Deck"
+msgstr ""
+
+#: help_ui.c:212
+msgid "Emulator: esp-emu 1.1.0 (external binary)"
+msgstr ""
+
+#: help_ui.c:213
+msgid "License: GPL-3.0 (see LICENSE in the repository root)"
+msgstr ""
+
+msgid "Profile and firmware settings"
+msgstr ""
+
+msgid "Runtime, audio, network, LittleFS and SD settings"
+msgstr ""
+
+msgid "Run mode notes. The merge wizard is not built yet"
+msgstr ""
+
+msgid "Parts (WASM) list. LittleFS and SD are on the Runtime page"
+msgstr ""
+
+msgid "Board preset and LCD size in use"
+msgstr ""
+
+msgid "Time since the emulator started"
+msgstr ""
+
+msgid "Emulator state. RUNNING appears 2 s after the host connects"
+msgstr ""
+
+msgid "Profile file that Save writes. Empty uses profiles/active.json"
+msgstr ""
+
+msgid "Board from boards/*.json. Sets cosim board and display size defaults"
+msgstr ""
+
+msgid "Chip for esp-emu. The es3c28p board is an ESP32-S3"
+msgstr ""
+
+msgid "Firmware image to run: local build, KryonOS v3, asset or custom path"
+msgstr ""
+
+msgid "Merged flash image (.bin) passed to esp-emu"
+msgstr ""
+
+msgid "ELF with symbols. Used only when Use ELF is checked"
+msgstr ""
+
+msgid "Old custom firmware path. Used only with Custom firmware selected"
+msgstr ""
+
+msgid "Whole-number zoom of the LCD on the canvas (1 to 4)"
+msgstr ""
+
+msgid "Hardware rotation of the LCD and touch, 0 to 3"
+msgstr ""
+
+msgid "UI with embedded host (cosim), or backend only (--no-host)"
+msgstr ""
+
+msgid "Route cosim through a Unix socket with socat. Needs socat (conditional)"
+msgstr ""
+
+msgid "Unix socket path for the socat cosim bridge"
+msgstr ""
+
+msgid "UART console port, derived from the instance (read-only)"
+msgstr ""
+
+msgid "Where the firmware console goes: tcp, stdio, pty or none"
+msgstr ""
+
+msgid "Path to the esp-emu binary"
+msgstr ""
+
+msgid "esp-emu binary used by the capability probe"
+msgstr ""
+
+msgid "Run esp-emu --help and --version again and update the capability states"
+msgstr ""
+
+msgid "Enable I2S audio through esp-emu. Output is a WAV file"
+msgstr ""
+
+msgid "WAV file that receives the I2S output"
+msgstr ""
+
+msgid "WAV file used as I2S input (optional)"
+msgstr ""
+
+msgid "I2S instance number for esp-emu. -1 keeps the default"
+msgstr ""
+
+msgid "Audio backend hint kept in the profile (default wav-file)"
+msgstr ""
+
+msgid "Legacy switch for user-mode networking (--net user). Prefer Network enabled"
+msgstr ""
+
+msgid "Enable networking with --net. Mode is set in Net mode"
+msgstr ""
+
+msgid "Mode for --net. user is the built-in user-mode networking"
+msgstr ""
+
+msgid "Host port forwards separated by ;. Format proto:hostaddr:hostport-guestaddr:guestport"
+msgstr ""
+
+msgid "Network name of the emulated Wi-Fi AP. Test profiles use testnet"
+msgstr ""
+
+msgid "WPA passphrase, 8 to 63 characters. Ignored for open"
+msgstr ""
+
+msgid "Security of the emulated AP: open, wpa2-psk, wpa3-sae or wpa2-wpa3"
+msgstr ""
+
+msgid "HCI transport for BLE, for example tcp:localhost:9544. Needs an HCI server there"
+msgstr ""
+
+msgid "Start a GDB stub on the GDB port (--gdb). Conditional on esp-emu support"
+msgstr ""
+
+msgid "TCP port of the GDB stub, derived from the instance (read-only)"
+msgstr ""
+
+msgid "Wait for GDB before the firmware starts (--gdb-halt)"
+msgstr ""
+
+msgid "Write an esp-emu trace file (--trace). Conditional on esp-emu support"
+msgstr ""
+
+msgid "Output file for the trace"
+msgstr ""
+
+msgid "Partition label of the LittleFS image (default littlefs)"
+msgstr ""
+
+msgid "Mount path of the LittleFS image in the firmware"
+msgstr ""
+
+msgid "Flash offset of the LittleFS partition. Must match the partition table"
+msgstr ""
+
+msgid "Size of the LittleFS partition. Must match the partition table"
+msgstr ""
+
+msgid "Legacy SD switch. Use Card menu to eject or replace the image"
+msgstr ""
+
+msgid "Card image file (.img). Set it from Card menu > Replace image"
+msgstr ""
+
+msgid "SD bus mode: sdmmc (ESP32-S3), sdspi or none"
+msgstr ""
+
+msgid "SD slot index (legacy field kept in the profile)"
+msgstr ""
+
+msgid "Chip-select GPIO for SPI SD (legacy field kept in the profile)"
+msgstr ""
+
+msgid "Merge wizard is not built yet. Use ./start.sh emu merge"
+msgstr ""
+
+msgid "Folder with .wasm parts. Scan reads this folder"
+msgstr ""
+
+msgid "Look for .wasm parts in the parts folder"
+msgstr ""
+
+msgid "Check the parts list for claim and wiring conflicts"
+msgstr ""
+
+msgid "Id of this part instance in the parts list"
+msgstr ""
+
+msgid "Name of the part to add"
+msgstr ""
+
+msgid "Add the part instance to the list, or update its settings"
+msgstr ""
+
+msgid "Remove the selected part instance from the list"
+msgstr ""
+
+msgid "Open a file in the workflow editor"
+msgstr ""
+
+msgid "Save the workflow file. This does not save the profile"
+msgstr ""
+
+msgid "Run the build command shown in Build cmd"
+msgstr ""
+
+msgid "Show only log lines that contain this text"
+msgstr ""
+
+msgid "Show only lines of this level. All levels means no filter"
+msgstr ""
+
+msgid "Show only lines from this source (esp-emu, host, launcher, validation)"
+msgstr ""
+
+msgid "Keep the log scrolled to the newest line"
+msgstr ""
+
+msgid "Clear the visible log tab"
+msgstr ""
+
+msgid "Save the visible log lines to a text file"
+msgstr ""
+
+msgid "Create a profile with default values. Nothing is saved until Save"
+msgstr ""
+
+msgid "Load a profile JSON file and make it the active profile"
+msgstr ""
+
+msgid "Write the active profile file"
+msgstr ""
+
+msgid "Write the profile to a new file and make it the active profile"
+msgstr ""
+
+msgid "Copy the active profile to a new file and make the copy active"
+msgstr ""
+
+msgid "Import a legacy launcher.conf into the editor"
+msgstr ""
+
+msgid "Write a copy of the profile to a file. The active profile does not change"
+msgstr ""
+
+#: sim_launcher.c:3053
+msgid "Close the launcher. Stops the emulator. Unsaved profile changes ask first (Ctrl+Q)"
+msgstr ""
+
+#: sim_launcher.c:1971
+msgid "The profile has unsaved changes."
+msgstr ""
+
+#: sim_launcher.c:1972
+msgid "Save the active profile before quitting?"
+msgstr ""
+
+#: sim_launcher.c:1973
+msgid "Cancel"
+msgstr ""
+
+#: sim_launcher.c:1973
+msgid "Discard"
+msgstr ""
+
+#: sim_launcher.c:1978
+msgid "Could not save the profile."
+msgstr ""
+
+#: sim_launcher.c:1979
+msgid "The launcher stays open. See the log."
+msgstr ""
+
+msgid "Start the emulator with the active profile (Ctrl+R)"
+msgstr ""
+
+msgid "Stop the emulator and the host (Ctrl+.)"
+msgstr ""
+
+msgid "Stop and start the emulator again (Ctrl+Shift+R)"
+msgstr ""
+
+msgid "Run validation again and show the results in the Validation tab"
+msgstr ""
+
+msgid "Copy the effective esp-emu command line to the clipboard"
+msgstr ""
+
+msgid "Show or hide the drawer with the configuration pages"
+msgstr ""
+
+msgid "Show or hide the bottom dock"
+msgstr ""
+
+msgid "Show or hide the status bar"
+msgstr ""
+
+msgid "Show or hide the log tabs of the bottom dock"
+msgstr ""
+
+msgid "Interface language. The launcher must be restarted to apply it"
+msgstr ""
+
+msgid "Open the launcher help file"
+msgstr ""
+
+msgid "List the keyboard shortcuts"
+msgstr ""
+
+msgid "About this launcher"
+msgstr ""
+
+#: sim_launcher.c
+msgid "Choose a profile file"
+msgstr ""
+
+#: sim_launcher.c
+msgid "Choose the merged firmware image"
+msgstr ""
+
+#: sim_launcher.c
+msgid "Choose the ELF file"
+msgstr ""
+
+#: sim_launcher.c
+msgid "Choose the cosim board JSON"
+msgstr ""
+
+#: sim_launcher.c
+msgid "Choose the esp-emu binary for the probe"
+msgstr ""
+
+#: sim_launcher.c
+msgid "Choose the output WAV file"
+msgstr ""
+
+#: sim_launcher.c
+msgid "Choose the input WAV file"
+msgstr ""
+
+#: sim_launcher.c
+msgid "Choose the trace output file"
+msgstr ""
+
+#: sim_launcher.c
+msgid "Choose the LittleFS image file"
+msgstr ""
+
+#: validate.c:444
+msgid "Wi-Fi passphrase must be 8-63 characters (esp-emu)"
+msgstr ""
+
+#: validate.c:445
+msgid "Use an 8-63 character passphrase or set the network to open"
+msgstr ""
+
+#: validate.c:449
+msgid "Open network: the passphrase is ignored"
+msgstr ""
