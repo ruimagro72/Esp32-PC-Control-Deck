@@ -8,6 +8,7 @@
 #   ./start.sh card [stage|deploy <mount>|image|extract|ls]
 #   ./start.sh test [all|server|native|emu|launcher|extensive|wifi|ble|store]
 #   ./start.sh scan
+#   ./start.sh export [--dry-run]
 #   ./start.sh help
 #
 # Firmware defaults: ENV=es3c28p, PORT=/dev/ttyACM0. The Java host is in server/.
@@ -319,7 +320,7 @@ sim_ensure_card() {
 # them and deploy never copies them, so the card keeps its own copies.
 is_secret_file() {
     case "$1" in
-        *.pk8|*/deck.json|*/vnc.json|*/.env|*wifi_credentials*) return 0 ;;
+        *.pk8|deck.json|*/deck.json|vnc.json|*/vnc.json|.env|*/.env|*wifi_credentials*) return 0 ;;
     esac
     return 1
 }
@@ -495,13 +496,26 @@ project_files() {
         -type f -print0
 }
 
+# Content patterns shared by scan and export. Lines tagged scan-self are the patterns themselves, not hits.
+SCAN_PATTERNS=(
+    'BEGIN (RSA |EC )?PRIVATE KEY'   # scan-self
+    'Bearer [A-Za-z0-9_-]{30,}'      # scan-self
+    '/home/[a-z]+/'                  # scan-self
+)
+
+# content_hits [FILE...]: matching lines of FILEs (or stdin), without scan-self lines. Prints text: callers
+# that must not show it (export) keep only the line numbers.
+content_hits() {
+    local -a args=()
+    local p
+    for p in "${SCAN_PATTERNS[@]}"; do args+=(-e "$p"); done
+    # -a: binary-looking text (a NUL byte in a file) is still scanned, not skipped.
+    grep -aEn "${args[@]}" -- "$@" 2>/dev/null | grep -v 'scan-self' || true
+}
+
 scan() {
     local f rel hits
     local -a secret=() ignored=() content=()
-    # The scan's own patterns: lines tagged scan-self are not content hits.
-    local pat_key='BEGIN (RSA |EC )?PRIVATE KEY'   # scan-self
-    local pat_bearer='Bearer [A-Za-z0-9_-]{30,}'   # scan-self
-    local pat_home='/home/[a-z]+/'                 # scan-self
 
     # Names: every file on disk. A match git ignores is the owner's local file: reported, not a failure.
     while IFS= read -r -d '' f; do
@@ -517,7 +531,7 @@ scan() {
     # Content: tracked files plus untracked files git does not ignore. Only file names are printed.
     while IFS= read -r -d '' rel; do
         [ -f "$ROOT/$rel" ] || continue
-        hits="$(grep -IEn -e "$pat_key" -e "$pat_bearer" -e "$pat_home" -- "$ROOT/$rel" 2>/dev/null | grep -v 'scan-self' || true)"
+        hits="$(content_hits "$ROOT/$rel")"
         if [ -n "$hits" ]; then
             content+=("$rel")
         fi
@@ -542,7 +556,138 @@ scan() {
 
 
 
-# ----- esp-emu (ESP32 emulator) -------------------------------------------
+# ----- public branches (export) --------------------------------------------
+
+# The five public branches are built inside this repo with git plumbing, from committed content
+# (HEAD) plus the per-branch overlay files in export/<branch>/ (README, CHANGELOG, .gitignore and the
+# docs that differ per branch). Results go to refs/heads/public/<branch>. HEAD, the working branch and
+# the working tree are not changed, and nothing is copied out of the repo.
+EXPORT_BRANCHES="main kryonos deck server simulator"
+EXPORT_DIR="$ROOT/export"
+EXPORT_REF_PREFIX="refs/heads/public"
+EXPORT_AUTHOR_NAME="ruimagro72"
+EXPORT_AUTHOR_EMAIL="105087241+ruimagro72@users.noreply.github.com"
+
+# export_branches_for PATH: the public branches that take a tracked path (space separated); nothing
+# for a path that is not exported. Overlay files in export/<branch>/ replace the tracked file.
+export_branches_for() {
+    case "$1" in
+        CLAUDE.md|export/*|docs/archive/*|docs/reports/*) ;;
+        docs/simulator/UPSTREAM-REQUEST-ESP-EMU-LCD.md|docs/simulator/ESP_EMULATOR_INTEGRATION.md) ;;
+        docs/simulator/emu/KRYONOS-V3.0.0-PREP.md) ;;
+        simulator/logs/*|simulator/build/*|server/var/*) ;;
+        simulator/mockup_studio/*|simulator/mockup_launcher/*) ;;
+        simulator/SD_Card/*) echo "simulator" ;;
+        simulator/emu/firmware/*/*|simulator/emu/firmware/*.bin) ;;
+        firmware/apps/KryonOS-AppStore/categories/utilities/vnc/*) ;;
+        LICENSE) echo "main kryonos" ;;
+        start.sh|docs/BRANCHES.md) echo "main" ;;
+        README.md|CHANGELOG.md|THIRD-PARTY.md) echo "main deck kryonos server simulator" ;;
+        .gitignore) echo "deck kryonos server simulator" ;;
+        docs/README.md) echo "deck kryonos" ;;
+        docs/04-PROTOCOL.md|docs/05-SECURITY.md) echo "deck server" ;;
+        docs/03-SERVER.md|server/*) echo "server" ;;
+        docs/02-FIRMWARE-KRYONOS.md|docs/06-UPSTREAM-KRYONOS.md|docs/firmware/KEYBOARD_TERMINAL.md) echo "kryonos" ;;
+        docs/upstream/README.md|docs/upstream/A-*|docs/upstream/B-*|docs/upstream/C-*) echo "kryonos" ;;
+        docs/upstream/D-deck-layer/*|docs/firmware/OTA.md|docs/firmware/UI_FROM_SERVER.md) echo "deck" ;;
+        docs/simulator/*|simulator/*) echo "simulator" ;;
+        firmware/apps/deck/*|firmware/apps/decklink/*|firmware/apps/deckshell/*|firmware/apps/shell/*) echo "deck" ;;
+        firmware/apps/bluetooth/*|firmware/apps/vnc/*|firmware/apps/lib/decknet.js) echo "deck" ;;
+        firmware/tools/Send.java|firmware/tools/deck-monitor.sh|firmware/tools/vnc-bridge.sh) echo "deck" ;;
+        firmware/*) echo "kryonos" ;;
+        *) ;;
+    esac
+}
+
+# export_run TMPDIR DRY: builds every branch's tree, checks it, then (unless DRY) commits the trees that
+# changed and moves the refs. Nothing is written to a ref unless every branch passes the checks.
+export_run() {
+    local tmp="$1" dry="$2" b rec meta rest mode type sha path br f hits ok=1 files tree parent commit status
+    local ref
+
+    # Entries: branch TAB path TAB mode TAB blob. Tracked files come from HEAD, overlays are appended last.
+    : > "$tmp/entries"
+    while IFS= read -r -d '' rec; do
+        meta="${rec%%$'\t'*}"; path="${rec#*$'\t'}"
+        read -r mode type sha <<< "$meta"
+        [ "$type" = blob ] || continue
+        for br in $(export_branches_for "$path"); do
+            printf '%s\t%s\t%s\t%s\n' "$br" "$path" "$mode" "$sha" >> "$tmp/entries"
+        done
+    done < <(git -C "$ROOT" ls-tree -r -z HEAD)
+    for b in $EXPORT_BRANCHES; do
+        [ -d "$EXPORT_DIR/$b" ] || continue
+        while IFS= read -r -d '' f; do
+            mode=100644; [ -x "$f" ] && mode=100755
+            sha="$(git -C "$ROOT" hash-object -w "$f")"
+            printf '%s\t%s\t%s\t%s\n' "$b" "${f#"$EXPORT_DIR/$b/"}" "$mode" "$sha" >> "$tmp/entries"
+        done < <(find "$EXPORT_DIR/$b" -type f -print0)
+    done
+
+    # Phase 1: per branch, the index list (last entry per path wins), the checks, and the tree.
+    for b in $EXPORT_BRANCHES; do
+        awk -F'\t' -v b="$b" '$1 == b { last[$2] = $3 " " $4 } END { for (p in last) print last[p] "\t" p }' \
+            "$tmp/entries" > "$tmp/$b.idx"
+        files="$(wc -l < "$tmp/$b.idx")"
+        while IFS=$'\t' read -r meta path; do
+            sha="${meta#* }"
+            if is_secret_file "$path"; then
+                echo "REJECTED $b: secret file name: $path" >&2; ok=0; continue
+            fi
+            # The blob is the final content that ships (overlay wins over the private file).
+            hits="$(git -C "$ROOT" cat-file blob "$sha" | content_hits)"
+            if [ -n "$hits" ]; then
+                echo "REJECTED $b: content pattern in $path, lines: $(printf '%s' "$hits" | cut -d: -f1 | tr '\n' ' ')" >&2
+                ok=0
+            fi
+        done < "$tmp/$b.idx"
+        GIT_INDEX_FILE="$tmp/$b.index" git -C "$ROOT" update-index --index-info < "$tmp/$b.idx"
+        GIT_INDEX_FILE="$tmp/$b.index" git -C "$ROOT" write-tree > "$tmp/$b.tree"
+        printf '%s\n' "$files" > "$tmp/$b.files"
+    done
+    if [ "$ok" -ne 1 ]; then
+        echo "export: a branch was rejected, no ref was changed" >&2
+        return 1
+    fi
+
+    # Phase 2: commit a branch only when its tree differs from the current public ref.
+    for b in $EXPORT_BRANCHES; do
+        ref="$EXPORT_REF_PREFIX/$b"
+        tree="$(cat "$tmp/$b.tree")"; files="$(cat "$tmp/$b.files")"
+        parent="$(git -C "$ROOT" rev-parse -q --verify "$ref^{commit}" || true)"
+        commit="$parent"
+        if [ -n "$parent" ] && [ "$(git -C "$ROOT" rev-parse "$parent^{tree}")" = "$tree" ]; then
+            status="unchanged"
+        elif [ "$dry" -eq 1 ]; then
+            status="would change (dry run)"; commit="-"
+        else
+            commit="$(GIT_AUTHOR_NAME="$EXPORT_AUTHOR_NAME" GIT_AUTHOR_EMAIL="$EXPORT_AUTHOR_EMAIL" \
+                GIT_COMMITTER_NAME="$EXPORT_AUTHOR_NAME" GIT_COMMITTER_EMAIL="$EXPORT_AUTHOR_EMAIL" \
+                git -C "$ROOT" commit-tree "$tree" ${parent:+-p "$parent"} -m "Export $b from the private tree")"
+            git -C "$ROOT" update-ref "$ref" "$commit" ${parent:+"$parent"}
+            status="committed"
+        fi
+        printf '%-10s %s  %4s files  tree %s  %s\n' "$b" "$commit" "$files" "$tree" "$status"
+    done
+}
+
+# export_cmd [--dry-run]: the ./start.sh export subcommand (see export_run).
+export_cmd() {
+    local dry=0 arg tmp rc=0
+    for arg in "$@"; do
+        case "$arg" in
+            --dry-run) dry=1 ;;
+            -h|--help) echo "usage: ./start.sh export [--dry-run]"; return 0 ;;
+            *) die "export: unknown arg: $arg (see: ./start.sh help)" ;;
+        esac
+    done
+    tmp="$(mktemp -d)"
+    export_run "$tmp" "$dry" || rc=$?
+    rm -rf "$tmp"
+    return "$rc"
+}
+
+# ----- esp-emu (ESP32 emulator)-------------------------------------------
 
 EMU_DIR="$SIM/emu"
 EMU_FW_BUILD_HW="$FW/.pio/build/es3c28p"
@@ -1718,8 +1863,11 @@ case "${1:-help}" in
     scan)
         shift
         scan "$@" ;;
+    export)
+        shift
+        export_cmd "$@" ;;
     help|-h|--help)
         usage ;;
     *)
-        die "unknown command '$1' (build, flash, monitor, publish, put, cmd, bridge, monitor-vnc, server, emu, launcher, card, test, scan, help)" ;;
+        die "unknown command '$1' (build, flash, monitor, publish, put, cmd, bridge, monitor-vnc, server, emu, launcher, card, test, scan, export, help)" ;;
 esac

@@ -36,7 +36,7 @@ cd "$DIR" && ./start.sh help
 Root files that several branches have (`README.md`, `CHANGELOG.md`, `THIRD-PARTY.md`, `LICENSE`, `.gitignore`) are
 replaced by the last extraction, so use the branch READMEs for the details of each part.
 
-Checked on the assembled tree: `./start.sh help`, `./start.sh test help`, `./start.sh test server` (101 passed). `./start.sh test native` needs `simulator/SD_Card`, which is not in these branches. `./start.sh scan` needs the tree to be a git repository (`git init` in the folder).
+Checked on the assembled tree: `./start.sh help`, `./start.sh test help`, `./start.sh test server` (101 passed). `./start.sh test native` needs `simulator/SD_Card`, which is in the `simulator` branch. `./start.sh scan` needs the tree to be a git repository (`git init` in the folder).
 
 ## Status
 
