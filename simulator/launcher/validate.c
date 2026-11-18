@@ -313,6 +313,18 @@ static void validate_storage_section(const launcher_config_t *cfg, const validat
                                 "Probe esp-emu (--help) to confirm --sd support" : "");
     }
 
+    if (cfg->sd_dir[0] && (flags & VALIDATE_CHECK_FILES)) {
+        char dir_path[PATH_MAX];
+        struct stat dsb;
+        if (is_abs_path(cfg->sd_dir) || !repo_root || !repo_root[0])
+            snprintf(dir_path, sizeof(dir_path), "%s", cfg->sd_dir);
+        else
+            snprintf(dir_path, sizeof(dir_path), "%s/%s", repo_root, cfg->sd_dir);
+        if (stat(dir_path, &dsb) != 0 || !S_ISDIR(dsb.st_mode))
+            validate_report_add(report, "SD_DIR_MISSING", VALIDATE_SEV_WARN, "storage.sd_dir",
+                                _("SD card folder does not exist"), "");
+    }
+
     if (ver_known) {
         char msg[VALIDATE_MAX_TEXT];
         snprintf(msg, sizeof(msg), "esp-emu probe version: %d.%d.%d (caps derived from probe)",

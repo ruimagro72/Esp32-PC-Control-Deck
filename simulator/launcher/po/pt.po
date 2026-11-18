@@ -71,6 +71,12 @@ msgstr "[launcher] pre-start validation FAILED (blocking errors). Start abortado
 msgid "[launcher] pre-start validation OK (see warnings in the Validation panel)."
 msgstr "[launcher] pre-start validation OK (ver avisos no painel Validação)."
 
+msgid "[launcher] SD card folder sync could not start. Start aborted."
+msgstr "[launcher] Não foi possível iniciar a sincronização da pasta do cartão SD. Arranque cancelado."
+
+msgid "[launcher] SD card folder sync failed. Start aborted."
+msgstr "[launcher] A sincronização da pasta do cartão SD falhou. Arranque cancelado."
+
 msgid "(no diagnostics)\n"
 msgstr "(sem diagnósticos)\n"
 
@@ -121,6 +127,27 @@ msgstr "Ecrã"
 
 msgid "SD card"
 msgstr "Cartão SD"
+
+msgid "SD card folder"
+msgstr "Pasta do cartão SD"
+
+msgid "Browse..."
+msgstr "Procurar..."
+
+msgid "Choose the SD card folder"
+msgstr "Escolher a pasta do cartão SD"
+
+msgid "SD card folder does not exist"
+msgstr "A pasta do cartão SD não existe"
+
+msgid "Syncing SD card folder to image..."
+msgstr "A sincronizar a pasta do cartão SD para a imagem..."
+
+msgid "Folder used as the content of the SD card. At Start the card image is rebuilt from this folder."
+msgstr "Pasta usada como conteúdo do cartão SD. Ao iniciar, a imagem do cartão é reconstruída a partir desta pasta."
+
+msgid "Choose the folder to use as the SD card."
+msgstr "Escolher a pasta a usar como cartão SD."
 
 msgid "Network/Wi-Fi/BLE"
 msgstr "Rede/Wi-Fi/BLE"
@@ -1499,3 +1526,115 @@ msgstr "Use uma frase-passe de 8 a 63 caracteres ou defina a rede como open"
 #: validate.c:449
 msgid "Open network: the passphrase is ignored"
 msgstr "Rede open: a frase-passe é ignorada"
+
+#: help_ui.c
+msgid "Find in help"
+msgstr "Procurar na ajuda"
+
+#: help_ui.c
+msgid "No match"
+msgstr "Sem resultados"
+
+#: sim_launcher.c
+msgid "No profile file"
+msgstr "Sem ficheiro de perfil"
+
+#: sim_launcher.c
+msgid "Profile: %s"
+msgstr "Perfil: %s"
+
+#: sim_launcher.c
+msgid "Read-only status of the GDB stub and trace options. Set them in Runtime/Audio/Network"
+msgstr "Estado só de leitura do GDB e do trace. Defina-os em Runtime/Audio/Network"
+
+#: sim_launcher.c
+msgid "Read-only status. Set GDB and Trace in Runtime/Audio/Network."
+msgstr "Só de leitura. Defina o GDB e o Trace em Runtime/Audio/Network."
+
+#: sim_launcher.c
+msgid "Build emulator (start.sh)"
+msgstr "Compilar emulador (start.sh)"
+
+#: sim_launcher.c
+msgid "Run the build command set in Code/Build/Run > Build cmd"
+msgstr "Executa o comando de compilação definido em Code/Build/Run > Build cmd"
+
+#: sim_launcher.c
+msgid "Command run by Simulator > Build emulator (start.sh)"
+msgstr "Comando executado por Simulator > Build emulator (start.sh)"
+
+#: sim_launcher.c
+msgid "Parts report: %d items, %d errors, %d warnings"
+msgstr "Relatório de partes: %d itens, %d erros, %d avisos"
+
+#: sim_launcher.c
+msgid "Diagnostics of the Storage/Parts report (parts scan, add and conflict check)"
+msgstr "Diagnóstico do relatório Storage/Parts (análise de partes, adição e conflitos)"
+
+#: sim_launcher.c
+msgid "Validation: %d errors, %d warnings"
+msgstr "Validação: %d erros, %d avisos"
+
+#: sim_launcher.c
+msgid "Result of the last Simulator > Validate. Details in the Validation tab"
+msgstr "Resultado do último Simulator > Validate. Detalhes na aba Validation"
+
+#: sim_launcher.c
+msgid "Start runs the emulator with this configuration"
+msgstr "Start executa o emulador com esta configuração"
+
+#: sim_launcher.c
+msgid "Values shown here are read from the profile and the launcher settings. Change them in the drawer"
+msgstr "Valores lidos do perfil e das definições do lançador. Altere-os na gaveta"
+
+#: sim_launcher.c
+msgid "SD card folder. Start syncs it into the card image"
+msgstr "Pasta do cartão SD. O Start sincroniza-a para a imagem do cartão"
+
+#: sim_launcher.c
+msgid "Board from boards/*.json"
+msgstr "Placa de boards/*.json"
+
+#: sim_launcher.c
+msgid "Chip of the board profile"
+msgstr "Chip do perfil da placa"
+
+#: sim_launcher.c
+msgid "Display size and rotation"
+msgstr "Tamanho e rotação do ecrã"
+
+#: sim_launcher.c
+msgid "Firmware image the emulator loads"
+msgstr "Imagem de firmware que o emulador carrega"
+
+#: sim_launcher.c
+msgid "ELF file for symbols and GDB (only with Use ELF)"
+msgstr "Ficheiro ELF para símbolos e GDB (só com Use ELF)"
+
+#: sim_launcher.c
+msgid "Cosim board JSON used by the emulator"
+msgstr "JSON da placa cosim usado pelo emulador"
+
+#: sim_launcher.c
+msgid "SD card image mounted by esp-emu"
+msgstr "Imagem do cartão SD montada pelo esp-emu"
+
+#: sim_launcher.c
+msgid "Wi-Fi, BLE and network mode of the profile"
+msgstr "Modo Wi-Fi, BLE e rede do perfil"
+
+#: sim_launcher.c
+msgid "Audio input and output of the profile"
+msgstr "Entrada e saída de áudio do perfil"
+
+#: sim_launcher.c
+msgid "UART console and its port"
+msgstr "Consola UART e a sua porta"
+
+#: sim_launcher.c
+msgid "esp-emu binary and version"
+msgstr "Binário e versão do esp-emu"
+
+#: sim_launcher.c
+msgid "Command line that Start runs. Simulator > Copy command copies it"
+msgstr "Linha de comandos que o Start executa. Simulator > Copy command copia-a"

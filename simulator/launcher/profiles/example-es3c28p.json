@@ -3,7 +3,7 @@
   "schema_version": "simulator.profile/v1",
   "metadata": {
     "id": "example-es3c28p",
-    "name": "ES3C28P Example",
+    "name": "ES3C28P (default board)",
     "description": "Example simulator profile for the ES3C28P board using local merged firmware and ELF.",
     "tags": [
       "example",

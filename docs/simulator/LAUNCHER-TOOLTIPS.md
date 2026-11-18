@@ -10,7 +10,7 @@ Proposed tooltips are at most 90 characters. Rows marked **already wired** show 
 
 Labels with a glyph (▶, ■, ↻, ▤, ✕) are shown exactly as the code has them.
 
-Counts (120 rows): 96 wired, 24 already wired, 0 not wired. The 9 Browse buttons are wired through the `tip` argument of `with_browse()`. The Badge row quotes the code text "2 s after the host connects", which is not the exact rule: RUNNING needs the host attached and connected and more than 2 s since the emulator started.
+Counts (122 rows): 98 wired, 24 already wired, 0 not wired. The 10 Browse buttons are wired through the `tip` argument of `with_browse()`. The Badge row quotes the code text "2 s after the host connects", which is not the exact rule: RUNNING needs the host attached and connected and more than 2 s since the emulator started.
 
 ## Toolbar and status
 
@@ -41,7 +41,7 @@ Counts (120 rows): 96 wired, 24 already wired, 0 not wired. The 9 Browse buttons
 
 | Control | Where | Proposed tooltip | Status |
 |---------|-------|------------------|--------|
-| Active profile (JSON) | line 2447 | Profile file that Save writes. Empty uses profiles/active.json | wired |
+| Active profile (JSON) | `entry_profile_path` (read-only, shows the profile name), `profile_field_set()` | Full path of the profile file that Save writes. Browse changes it | wired |
 | Browse (profile) | line 2447 | Choose a profile file | wired |
 | Board preset | `combo_board`, line 2471 | Board from boards/*.json. Sets cosim board and display size defaults | wired |
 | Target chip (esp-emu) | `combo_chip`, line 2472 | Chip for esp-emu. The es3c28p board is an ESP32-S3 | wired |
@@ -105,10 +105,12 @@ Counts (120 rows): 96 wired, 24 already wired, 0 not wired. The 9 Browse buttons
 | LittleFS size | `entry_littlefs_size`, line 2569 | Size of the LittleFS partition. Must match the partition table | wired |
 | SD (legacy: use the Card menu) | `check_sd_enabled`, line 2505 | Legacy SD switch. Use Card menu to eject or replace the image | wired |
 | SD image | `entry_sd_image`, line 2572 | Card image file (.img). Set it from Card menu > Replace image | wired |
+| SD card folder | Runtime page, SD section (line not yet known) | Folder used as the content of the SD card. At Start the card image is rebuilt from this folder. | wired |
 | SD mode | `combo_sd_mode`, line 2571 | SD bus mode: sdmmc (ESP32-S3), sdspi or none | wired |
 | SD slot | `entry_sd_slot`, line 2573 | SD slot index (legacy field kept in the profile) | wired |
 | SD CS pin | `entry_sd_cs`, line 2574 | Chip-select GPIO for SPI SD (legacy field kept in the profile) | wired |
 | Browse (LittleFS image) | line 2565 | Choose the LittleFS image file | wired |
+| Browse (SD card folder) | Runtime page, SD section (line not yet known) | Choose the folder to use as the SD card. | wired |
 
 ## Merge / Run and Storage / Parts page
 
@@ -129,7 +131,7 @@ Counts (120 rows): 96 wired, 24 already wired, 0 not wired. The 9 Browse buttons
 |---------|-------|------------------|--------|
 | Open (Code/Build/Run) | `btn_wf_open`, line 2657 | Open a file in the workflow editor | wired |
 | Save (Code/Build/Run) | `btn_wf_save`, line 2658 | Save the workflow file. This does not save the profile | wired |
-| Build (start.sh) | `btn_wf_build`, line 2659 | Run the build command shown in Build cmd | wired |
+| Build emulator (start.sh) | Simulator menu item (`on_workflow_build`) | Run the build command set in Code/Build/Run > Build cmd | wired |
 | Text filter | `entry_log_filter`, line 2733 | Show only log lines that contain this text | wired |
 | Level filter | `combo_log_level`, line 2733 | Show only lines of this level. All levels means no filter | wired |
 | Origin filter | `combo_log_origin`, line 2741 | Show only lines from this source (esp-emu, host, launcher, validation) | wired |

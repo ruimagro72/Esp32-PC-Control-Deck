@@ -1,6 +1,6 @@
 // Deck protocol 4 in JavaScript (ES5, Duktape). docs/04-PROTOCOL.md: frames, COBS, CRC-16.
 // Over Wi-Fi: POST /api/deck, text/plain base64 of the COBS frames (KryonOS HTTP is text only).
-// Load in an app with: eval(FS.readTextFile("/sd/lib/decknet.js"));
+// Load in an app with: eval(FS.readTextFile("decknet.js"));   (the app's own folder; see deck/main.js)
 var DeckNet = (function () {
     var seq = 0;
     function crc16(b, n) {

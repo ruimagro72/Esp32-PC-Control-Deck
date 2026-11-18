@@ -131,6 +131,7 @@ typedef struct {
     char sd_mount_path[SIM_PROFILE_MAX_PATH];
     bool card_enabled;                       /* esp-emu --sd image mounted (JSON storage.sd_enabled, default true) */
     char card_image_path[SIM_PROFILE_MAX_PATH]; /* JSON storage.sd_image_path (default simulator/emu/storage/sd.img) */
+    char sd_dir[SIM_PROFILE_MAX_PATH];       /* JSON storage.sd_dir: card folder synced into card_image_path on Start; "" = none */
 } sim_profile_storage_t;
 
 typedef struct {

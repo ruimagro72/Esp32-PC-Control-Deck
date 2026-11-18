@@ -614,6 +614,8 @@ static bool parse_storage(jcur_t *c, sim_profile_storage_t *s) {
             jparse_bool(c,&s->card_enabled);
         } else if (strcmp(k,"sd_image_path")==0) {
             jparse_scalar_to_str(c,s->card_image_path,sizeof(s->card_image_path));
+        } else if (strcmp(k,"sd_dir")==0) {
+            if(!jparse_scalar_to_str(c,s->sd_dir,sizeof(s->sd_dir))){free(k);return false;}
         } else if (strcmp(k,"sd_card")==0) {
             if(!jexpect_obj_start(c)){free(k);return false;} jskip_ws(c); if(!jconsume(c,'}')){
                 for(;;){ char *sk=jparse_string(c); if(!sk){free(k);return false;} if(!jconsume(c,':')){free(sk);free(k);return false;}
@@ -925,6 +927,7 @@ int sim_profile_save_json(const sim_profile_t *p, const char *profile_path, sim_
     fprintf(f, " },\n");
     fprintf(f, "    \"sd_enabled\": %s,\n    \"sd_image_path\": ", p->storage.card_enabled?"true":"false");
     json_escape(f,p->storage.card_image_path); fputs(",\n",f);
+    fprintf(f, "    \"sd_dir\": "); if(p->storage.sd_dir[0]) json_escape(f,p->storage.sd_dir); else fputs("null",f); fputs(",\n",f);
     fprintf(f, "    \"sd_card\": { \"enabled\": %s, \"image_path\": ", p->storage.sd_enabled?"true":"false");
     if(p->storage.sd_image_path[0]) json_escape(f,p->storage.sd_image_path); else fputs("null",f);
     fprintf(f, ", \"mount_path\": "); if(p->storage.sd_mount_path[0]) json_escape(f,p->storage.sd_mount_path); else fputs("null",f);
@@ -1076,6 +1079,7 @@ void sim_profile_from_launcher_config(sim_profile_t *p, const launcher_config_t 
     p->audio.enabled = cfg->audio;
     p->storage.card_enabled = cfg->sd_enabled;
     sset(p->storage.card_image_path, sizeof(p->storage.card_image_path), cfg->sd_image_path);
+    sset(p->storage.sd_dir, sizeof(p->storage.sd_dir), cfg->sd_dir);
     p->network_radio.net_user = cfg->net_user;
     p->emu_runtime.instance = cfg->instance;
     sset(p->emu_runtime.extra_args, sizeof(p->emu_runtime.extra_args), cfg->extra_args);
@@ -1111,6 +1115,7 @@ void sim_profile_to_launcher_config(const sim_profile_t *p, launcher_config_t *c
     cfg->audio = p->audio.enabled;
     cfg->sd_enabled = p->storage.card_enabled;
     sset(cfg->sd_image_path, sizeof(cfg->sd_image_path), p->storage.card_image_path); /* "" stays "" (no default leak) */
+    sset(cfg->sd_dir, sizeof(cfg->sd_dir), p->storage.sd_dir);
     sset(cfg->cosim_board_path, sizeof(cfg->cosim_board_path), p->board_hardware.cosim.board_json);
     cfg->lcd_w = 0; cfg->lcd_h = 0; /* launcher uses overrides; profile width/height are base display */
     if (cfg->firmware == LAUNCHER_FW_CUSTOM) {

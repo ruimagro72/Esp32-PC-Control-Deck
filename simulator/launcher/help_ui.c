@@ -28,14 +28,26 @@ static gchar *help_doc_find(void) {
     return NULL;
 }
 
-/* Escape closes the help window (as its Close button does); Ctrl+Q quits the launcher through the main window's close path. */
+/* Escape clears a non-empty Find box, else closes the help window (as its Close button does); Ctrl+F focuses Find;
+ * Ctrl+Q quits the launcher through the main window's close path. */
 static gboolean help_key_press(GtkWidget *win, GdkEventKey *ev, gpointer data) {
     (void)data;
+    GtkWidget *find = GTK_WIDGET(g_object_get_data(G_OBJECT(win), "help-find"));  /* only the contents window has one */
+    gboolean ctrl = (ev->state & gtk_accelerator_get_default_mod_mask()) == GDK_CONTROL_MASK;
     if (ev->keyval == GDK_KEY_Escape) {
+        if (find && gtk_entry_get_text_length(GTK_ENTRY(find)) > 0) {
+            gtk_entry_set_text(GTK_ENTRY(find), "");
+            return TRUE;
+        }
         gtk_widget_destroy(win);
         return TRUE;
     }
-    if (gdk_keyval_to_lower(ev->keyval) == GDK_KEY_q && (ev->state & gtk_accelerator_get_default_mod_mask()) == GDK_CONTROL_MASK) {
+    if (find && ctrl && gdk_keyval_to_lower(ev->keyval) == GDK_KEY_f) {
+        gtk_widget_grab_focus(find);
+        gtk_editable_select_region(GTK_EDITABLE(find), 0, -1);
+        return TRUE;
+    }
+    if (gdk_keyval_to_lower(ev->keyval) == GDK_KEY_q && ctrl) {
         GtkWindow *main_win = gtk_window_get_transient_for(GTK_WINDOW(win));
         if (main_win) gtk_window_close(main_win);  /* same close path as the window button: delete-event asks about unsaved profile changes */
         return TRUE;
@@ -165,6 +177,41 @@ static void help_create_tags(GtkTextBuffer *buf) {
     gtk_text_buffer_create_tag(buf, "link", "underline", PANGO_UNDERLINE_SINGLE, NULL);
 }
 
+/* Find: selects the next match after the insert mark (wraps once to the top). from_top = search from the start (text changed). */
+static void help_find_run(GtkWidget *find, gboolean from_top) {
+    GtkTextView *tv = GTK_TEXT_VIEW(g_object_get_data(G_OBJECT(find), "help-view"));
+    GtkWidget *status = GTK_WIDGET(g_object_get_data(G_OBJECT(find), "help-status"));
+    GtkTextBuffer *buf = gtk_text_view_get_buffer(tv);
+    const gchar *needle = gtk_entry_get_text(GTK_ENTRY(find));
+    GtkTextIter start, from, ms, me;
+    gtk_label_set_text(GTK_LABEL(status), "");
+    gtk_text_buffer_get_start_iter(buf, &start);
+    if (!needle[0]) {  /* empty Find: drop the selection */
+        gtk_text_buffer_place_cursor(buf, &start);
+        return;
+    }
+    if (from_top) from = start;
+    else gtk_text_buffer_get_iter_at_mark(buf, &from, gtk_text_buffer_get_insert(buf));
+    gboolean found = gtk_text_iter_forward_search(&from, needle, GTK_TEXT_SEARCH_CASE_INSENSITIVE | GTK_TEXT_SEARCH_TEXT_ONLY, &ms, &me, NULL);
+    if (!found && !from_top) found = gtk_text_iter_forward_search(&start, needle, GTK_TEXT_SEARCH_CASE_INSENSITIVE | GTK_TEXT_SEARCH_TEXT_ONLY, &ms, &me, NULL);
+    if (!found) {
+        gtk_label_set_text(GTK_LABEL(status), _("No match"));
+        return;
+    }
+    gtk_text_buffer_select_range(buf, &me, &ms);  /* insert mark at the match end: the next Enter goes on */
+    gtk_text_view_scroll_to_iter(tv, &ms, 0.1, FALSE, 0.0, 0.0);
+}
+
+static void help_find_changed(GtkWidget *find, gpointer data) {
+    (void)data;
+    help_find_run(find, TRUE);
+}
+
+static void help_find_next(GtkWidget *find, gpointer data) {
+    (void)data;
+    help_find_run(find, FALSE);
+}
+
 void help_show_contents(GtkWindow *parent) {
     if (contents_win) {
         gtk_window_present(GTK_WINDOW(contents_win));
@@ -196,6 +243,20 @@ void help_show_contents(GtkWindow *parent) {
     }
     g_free(text);
     g_free(path);
+
+    /* Find row above the text: search entry (Enter = next match, Escape clears) and a "No match" note */
+    GtkWidget *find = gtk_search_entry_new();
+    GtkWidget *status = gtk_label_new(NULL);
+    gtk_entry_set_placeholder_text(GTK_ENTRY(find), _("Find in help"));
+    g_object_set_data(G_OBJECT(find), "help-view", tv);
+    g_object_set_data(G_OBJECT(find), "help-status", status);
+    g_object_set_data(G_OBJECT(win), "help-find", find);
+    g_signal_connect(find, "search-changed", G_CALLBACK(help_find_changed), NULL);
+    g_signal_connect(find, "activate", G_CALLBACK(help_find_next), NULL);
+    GtkWidget *find_row = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
+    gtk_box_pack_start(GTK_BOX(find_row), find, TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(find_row), status, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(box), find_row, FALSE, FALSE, 0);
 
     GtkWidget *sc = gtk_scrolled_window_new(NULL, NULL);
     gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(sc), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);

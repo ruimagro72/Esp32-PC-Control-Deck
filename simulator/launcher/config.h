@@ -64,6 +64,7 @@ typedef struct {
     /* SD card image mounted with esp-emu --sd (1.1.0). Default image is emu/storage/sd.img (start.sh adds it by itself). */
     bool sd_enabled;                          /* default 1; 0 => start.sh emu run --no-sd */
     char sd_image_path[LAUNCHER_MAX_PATH];    /* default LAUNCHER_SD_DEFAULT_IMAGE */
+    char sd_dir[LAUNCHER_MAX_PATH];           /* SD card folder synced into sd_image_path on Start; "" = none */
     audio_net_config_t audio_net; /* I2S WAV in/out, realtime hint, net/hostfwd/wifi placeholders/ble hci */
     char emu_caps_path[LAUNCHER_MAX_PATH]; /* optional esp-emu binary for caps probe; empty = autodetect */
     int run_mode; /* 0=ui+embedded host, 1=backend-only (--no-host/cosim) */

@@ -180,6 +180,14 @@ msgid ""
 "[launcher] pre-start validation FAILED (blocking errors). Start aborted."
 msgstr ""
 
+#: sim_launcher.c:1507
+msgid "[launcher] SD card folder sync could not start. Start aborted."
+msgstr ""
+
+#: sim_launcher.c:1522
+msgid "[launcher] SD card folder sync failed. Start aborted."
+msgstr ""
+
 #: sim_launcher.c:973
 msgid "Cannot start the emulator"
 msgstr ""
@@ -281,6 +289,34 @@ msgstr ""
 
 #: sim_launcher.c:1132
 msgid "SD card"
+msgstr ""
+
+#: sim_launcher.c
+msgid "SD card folder"
+msgstr ""
+
+#: sim_launcher.c
+msgid "Browse..."
+msgstr ""
+
+#: sim_launcher.c
+msgid "Choose the SD card folder"
+msgstr ""
+
+#: sim_launcher.c
+msgid "SD card folder does not exist"
+msgstr ""
+
+#: sim_launcher.c
+msgid "Syncing SD card folder to image..."
+msgstr ""
+
+#: sim_launcher.c
+msgid "Folder used as the content of the SD card. At Start the card image is rebuilt from this folder."
+msgstr ""
+
+#: sim_launcher.c
+msgid "Choose the folder to use as the SD card."
 msgstr ""
 
 #: sim_launcher.c:1132
@@ -2002,4 +2038,116 @@ msgstr ""
 
 #: validate.c:449
 msgid "Open network: the passphrase is ignored"
+msgstr ""
+
+#: help_ui.c
+msgid "Find in help"
+msgstr ""
+
+#: help_ui.c
+msgid "No match"
+msgstr ""
+
+#: sim_launcher.c
+msgid "No profile file"
+msgstr ""
+
+#: sim_launcher.c
+msgid "Profile: %s"
+msgstr ""
+
+#: sim_launcher.c
+msgid "Read-only status of the GDB stub and trace options. Set them in Runtime/Audio/Network"
+msgstr ""
+
+#: sim_launcher.c
+msgid "Read-only status. Set GDB and Trace in Runtime/Audio/Network."
+msgstr ""
+
+#: sim_launcher.c
+msgid "Build emulator (start.sh)"
+msgstr ""
+
+#: sim_launcher.c
+msgid "Run the build command set in Code/Build/Run > Build cmd"
+msgstr ""
+
+#: sim_launcher.c
+msgid "Command run by Simulator > Build emulator (start.sh)"
+msgstr ""
+
+#: sim_launcher.c
+msgid "Parts report: %d items, %d errors, %d warnings"
+msgstr ""
+
+#: sim_launcher.c
+msgid "Diagnostics of the Storage/Parts report (parts scan, add and conflict check)"
+msgstr ""
+
+#: sim_launcher.c
+msgid "Validation: %d errors, %d warnings"
+msgstr ""
+
+#: sim_launcher.c
+msgid "Result of the last Simulator > Validate. Details in the Validation tab"
+msgstr ""
+
+#: sim_launcher.c
+msgid "Start runs the emulator with this configuration"
+msgstr ""
+
+#: sim_launcher.c
+msgid "Values shown here are read from the profile and the launcher settings. Change them in the drawer"
+msgstr ""
+
+#: sim_launcher.c
+msgid "SD card folder. Start syncs it into the card image"
+msgstr ""
+
+#: sim_launcher.c
+msgid "Board from boards/*.json"
+msgstr ""
+
+#: sim_launcher.c
+msgid "Chip of the board profile"
+msgstr ""
+
+#: sim_launcher.c
+msgid "Display size and rotation"
+msgstr ""
+
+#: sim_launcher.c
+msgid "Firmware image the emulator loads"
+msgstr ""
+
+#: sim_launcher.c
+msgid "ELF file for symbols and GDB (only with Use ELF)"
+msgstr ""
+
+#: sim_launcher.c
+msgid "Cosim board JSON used by the emulator"
+msgstr ""
+
+#: sim_launcher.c
+msgid "SD card image mounted by esp-emu"
+msgstr ""
+
+#: sim_launcher.c
+msgid "Wi-Fi, BLE and network mode of the profile"
+msgstr ""
+
+#: sim_launcher.c
+msgid "Audio input and output of the profile"
+msgstr ""
+
+#: sim_launcher.c
+msgid "UART console and its port"
+msgstr ""
+
+#: sim_launcher.c
+msgid "esp-emu binary and version"
+msgstr ""
+
+#: sim_launcher.c
+msgid "Command line that Start runs. Simulator > Copy command copies it"
 msgstr ""

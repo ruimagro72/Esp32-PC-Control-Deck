@@ -246,6 +246,7 @@
         },
         "sd_enabled": { "type": "boolean", "default": true, "description": "Mount the SD image in esp-emu (--sd); false = --no-sd (card ejected)." },
         "sd_image_path": { "type": ["string", "null"], "default": "simulator/emu/storage/sd.img", "description": "SD card image passed to esp-emu --sd (esp-emu 1.1.0)." },
+        "sd_dir": { "type": ["string", "null"], "default": null, "description": "SD card folder copied into sd_image_path on Start (./start.sh card sync DIR IMG). Relative to the repo root or absolute. null or empty = image used as it is." },
         "sd_card": {
           "type": "object",
           "additionalProperties": false,

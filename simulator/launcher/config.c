@@ -150,6 +150,7 @@ void launcher_config_defaults(launcher_config_t *cfg) {
     set_str(cfg->emu_caps_path, sizeof(cfg->emu_caps_path), "");
     cfg->sd_enabled = true;
     set_str(cfg->sd_image_path, sizeof(cfg->sd_image_path), LAUNCHER_SD_DEFAULT_IMAGE);
+    set_str(cfg->sd_dir, sizeof(cfg->sd_dir), "");
     cfg->run_mode = 0;
     cfg->cosim_use_unix = false;
     set_str(cfg->cosim_unix_path, sizeof(cfg->cosim_unix_path), "");
@@ -325,6 +326,7 @@ int launcher_config_save(const launcher_config_t *cfg, const char *path) {
     fprintf(f, "profile_path=%s\n", cfg->profile_path);
     fprintf(f, "sd_enabled=%d\n", cfg->sd_enabled ? 1 : 0);
     fprintf(f, "sd_image_path=%s\n", cfg->sd_image_path);
+    fprintf(f, "sd_dir=%s\n", cfg->sd_dir);
     /* T20 storage (LittleFS) */
     fprintf(f, "littlefs_enabled=%d\n", cfg->storage.littlefs.enabled ? 1 : 0);
     fprintf(f, "littlefs_image=%s\n", cfg->storage.littlefs.image_path);
@@ -441,6 +443,8 @@ int launcher_config_load(launcher_config_t *cfg, const char *path) {
             cfg->sd_enabled = (atoi(val) != 0);
         } else if (strcmp(key, "sd_image_path") == 0) {
             if (val[0]) set_str(cfg->sd_image_path, sizeof(cfg->sd_image_path), val);
+        } else if (strcmp(key, "sd_dir") == 0) {
+            set_str(cfg->sd_dir, sizeof(cfg->sd_dir), val);
         } else if (strcmp(key, "littlefs_enabled") == 0) {
             cfg->storage.littlefs.enabled = (atoi(val) != 0);
         } else if (strcmp(key, "littlefs_image") == 0) {
