@@ -13,7 +13,7 @@
 var CFG = {
     host: "10.0.1.3",       // PC running the WebSocket bridge
     port: 5901,             // bridge listen port
-    password: "1234",       // VNC password ("" = try auth None); test value for krfb
+    password: "",           // VNC password: set it in vnc.json (see vnc.json.example); "" = try auth None
     encoding: "raw",        // "raw" or "hextile" (hextile is slow in JS: about 4x)
     colors: 16,             // 16 = RGB565 (65k colours), 8 = RGB332 (256 colours, half the data)
     fullFrames: false,      // true: ask for the whole view every time (steady benchmark)
