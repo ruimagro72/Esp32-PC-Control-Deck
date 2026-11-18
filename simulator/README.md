@@ -36,7 +36,7 @@ simulator/launcher/sim_launcher --help
 ## Firmware images and the SD card
 
 - The firmware images are not in this branch: `emu/firmware/manifest.json` lists them. The KryonOS v3.0.0 images come from
-  the upstream release; the es3c28p image is a local build of the Deck firmware (from the `kryonos` and `deck` branches).
+  the upstream release; the es3c28p image is a local build of the Deck firmware (from the KryonOS fork and the `deck` branch).
 - `simulator/SD_Card` is the default card: the folder of files this branch carries. `./start.sh card image` builds the
   128 MB image `emu/storage/sd.img` from it. Without that image the launcher reports `SD card image not found` and the
   firmware runs without a card.

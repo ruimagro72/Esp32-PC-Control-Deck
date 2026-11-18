@@ -3,7 +3,7 @@
 An independent ESP32 emulator front-end. It runs any ESP32 firmware image on a PC: the `esp-emu` 1.1.0 binary (installed
 by you, not included here), an SDL cosim host for the LCD and touch, and a GTK3 launcher.
 
-Part of a four-branch project (`kryonos`, `deck`, `server`, `simulator`). See the `main` branch for the overview.
+Part of a project with four branches (`main`, `deck`, `server`, `simulator`) and the KryonOS fork (`es3c28p-support`). See the `main` branch for the overview.
 
 Short version:
 
