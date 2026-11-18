@@ -1,0 +1,364 @@
+From bac3a1c015d18cf1111118668dbd306c7632502c Mon Sep 17 00:00:00 2001
+From: ESP32 PC Control Deck <noreply@example.invalid>
+Date: Fri, 13 Nov 2026 10:51:57 +0000
+Subject: [PATCH 1/3] Deck layer: DeckLink shares the USB port between protocol
+ 4 and the console
+
+NOT FOR UPSTREAM (ESP32 PC Control Deck only).
+
+DeckLink reads the USB serial port: COBS frames (first byte 0x02) go
+to the Deck (ping is answered with hello, console_input runs a console
+line through runConsoleLine and returns console_output, other frames are
+queued for the Deck app); plain text lines go to the serial console as
+before. Replaces consoleReadLine() in main.cpp and consolePoll().
+
+
+---
+ src/Kernel/DeckLink.cpp    | 197 +++++++++++++++++++++++++++++++++++++
+ src/Kernel/DeckLink.h      |  42 ++++++++
+ src/Runtime/JSBindings.cpp |   5 +-
+ src/main.cpp               |  22 ++---
+ 4 files changed, 249 insertions(+), 17 deletions(-)
+ create mode 100644 firmware/src/Kernel/DeckLink.cpp
+ create mode 100644 firmware/src/Kernel/DeckLink.h
+
+diff --git a/src/Kernel/DeckLink.cpp b/src/Kernel/DeckLink.cpp
+new file mode 100644
+index 0000000..26dd570
+--- /dev/null
++++ b/src/Kernel/DeckLink.cpp
+@@ -0,0 +1,197 @@
++#include "DeckLink.h"
++#include <WiFi.h>
++#include <deque>
++#include <vector>
++
++namespace DeckLink {
++namespace {
++constexpr uint8_t T_HELLO = 0x01, T_PONG = 0x02, T_CONSOLE_OUTPUT = 0x17;
++constexpr uint8_t T_HOST_HELLO = 0x40, T_PING = 0x41, T_CONSOLE_INPUT = 0x52;
++constexpr size_t MAX_FRAME = 4096, MAX_LINE = 512, MAX_QUEUE = 16, CHUNK = 900;
++const char *FIRMWARE = "kryon-0.8.0", *BOARD = "es3c28p";
++
++enum Mode : uint8_t { START, IN_FRAME, IN_LINE };
++Mode s_mode = START;
++std::vector<uint8_t> s_cobs;
++String s_line;
++std::deque<String> s_lines;
++std::deque<std::vector<uint8_t>> s_frames;
++bool s_greeted = false;
++uint32_t s_lastFrame = 0;   // a greeted server sends stats every few seconds
++uint16_t s_seq = 0;
++void (*s_runner)(const String &, Print &) = nullptr;
++
++uint16_t crc16(const uint8_t *b, size_t n) {   // CRC-16/CCITT-FALSE, as Frame4.crc16
++    uint16_t c = 0xFFFF;
++    for (size_t i = 0; i < n; i++) {
++        c ^= (uint16_t)b[i] << 8;
++        for (int k = 0; k < 8; k++) c = (c & 0x8000) ? (uint16_t)((c << 1) ^ 0x1021) : (uint16_t)(c << 1);
++    }
++    return c;
++}
++
++bool uncobs(const std::vector<uint8_t> &in, std::vector<uint8_t> &out) {
++    out.clear();
++    size_t p = 0;
++    while (p < in.size()) {
++        uint8_t code = in[p++];
++        if (code == 0) return false;
++        for (uint8_t i = 1; i < code; i++) { if (p >= in.size()) return false; out.push_back(in[p++]); }
++        if (code < 0xFF && p < in.size()) out.push_back(0);
++    }
++    return true;
++}
++
++// Writer for payload fields (little endian, str = u8 length + UTF-8, str16 = u16 length).
++struct W {
++    std::vector<uint8_t> a;
++    W &u8(uint8_t v) { a.push_back(v); return *this; }
++    W &u16(uint16_t v) { a.push_back(v & 255); a.push_back(v >> 8); return *this; }
++    W &str(const String &s) { size_t n = s.length() > 255 ? 255 : s.length(); u8(n); a.insert(a.end(), s.c_str(), s.c_str() + n); return *this; }
++    W &str16(const char *s, size_t n) { u16(n); a.insert(a.end(), s, s + n); return *this; }
++};
++
++void sendHello() {
++    W w; w.u8(4).str(deckId()).str(FIRMWARE).str(BOARD);
++    send(T_HELLO, w.a.data(), w.a.size());
++}
++
++// Answer of one console line, in parts of CHUNK bytes; flags bit 0 marks the last part.
++void consoleOutput(uint16_t id, const String &text) {
++    size_t n = text.length(), at = 0;
++    do {
++        size_t len = n - at > CHUNK ? CHUNK : n - at;
++        W w; w.str(deckId()).u16(id).u8(at + len >= n ? 1 : 0).str16(text.c_str() + at, len);
++        send(T_CONSOLE_OUTPUT, w.a.data(), w.a.size());
++        at += len;
++    } while (at < n);
++}
++
++struct StrPrint : Print {
++    String s;
++    size_t write(uint8_t c) override { s += (char)c; return 1; }
++};
++
++void handle(std::vector<uint8_t> &f) {
++    if (f.size() < 10 || (f[0] & 0xF0) != 0x40) return;
++    size_t n = f[6] | (f[7] << 8);
++    if (f.size() < 10 + n) return;
++    if (crc16(f.data(), 8 + n) != (uint16_t)(f[8 + n] | (f[9 + n] << 8))) return;   // damaged
++    s_lastFrame = millis();
++    uint8_t type = f[2];
++    const uint8_t *p = f.data() + 8;
++    if (type == T_PING) {
++        if (s_greeted) send(T_PONG, nullptr, 0); else sendHello();
++        return;
++    }
++    if (type == T_HOST_HELLO) s_greeted = true;   // the app may want it too: queued below
++    if (type == T_CONSOLE_INPUT && n >= 3) {
++        uint16_t id = p[0] | (p[1] << 8);
++        size_t len = p[2] < n - 3 ? p[2] : n - 3;
++        String line;
++        for (size_t i = 0; i < len; i++) line += (char)p[3 + i];
++        StrPrint out;
++        if (s_runner) s_runner(line, out); else out.print("no console");
++        consoleOutput(id, out.s);
++        return;
++    }
++    if (s_frames.size() >= MAX_QUEUE) s_frames.pop_front();   // no app reading: keep the newest
++    s_frames.push_back(f);
++}
++}  // namespace
++
++void poll() {
++    // A server that restarted pings again and waits for a hello: forget the greeting when quiet.
++    if (s_greeted && millis() - s_lastFrame > 10000) s_greeted = false;
++    while (Serial.available()) {
++        int c = Serial.read();
++        if (c < 0) break;
++        switch (s_mode) {
++            case START:
++                if (c == 0x02) { s_cobs.clear(); s_cobs.push_back(c); s_mode = IN_FRAME; }
++                else if (c == 0x00 || c == '\r' || c == '\n') { }
++                else { s_line = (char)c; s_mode = IN_LINE; }
++                break;
++            case IN_FRAME:
++                if (c == 0x00) {
++                    std::vector<uint8_t> raw;
++                    if (uncobs(s_cobs, raw)) handle(raw);
++                    s_mode = START;
++                } else if (s_cobs.size() < MAX_FRAME) s_cobs.push_back(c);
++                else s_mode = START;   // too long: drop it
++                break;
++            case IN_LINE:
++                if (c == '\n') {
++                    s_line.trim();
++                    s_mode = START;
++                    // Stop here: a "put" line is followed by raw file bytes that serialPut reads itself.
++                    if (s_line.length()) { s_lines.push_back(s_line); return; }
++                }
++                else if (c == 0x00) s_mode = START;   // a damaged line
++                else if (s_line.length() < MAX_LINE) s_line += (char)c;
++                break;
++        }
++    }
++}
++
++bool takeLine(String &line) {
++    poll();
++    if (s_lines.empty()) return false;
++    line = s_lines.front();
++    s_lines.pop_front();
++    return true;
++}
++
++bool takeFrame(std::vector<uint8_t> &frame) {
++    poll();
++    if (s_frames.empty()) return false;
++    frame = std::move(s_frames.front());
++    s_frames.pop_front();
++    return true;
++}
++
++void sendRaw(const uint8_t *src, size_t n) {
++    std::vector<uint8_t> out;
++    out.reserve(n + n / 254 + 2);
++    size_t ci = 0;
++    out.push_back(0);
++    uint8_t code = 1;
++    for (size_t i = 0; i < n; i++) {
++        if (src[i] == 0) { out[ci] = code; ci = out.size(); out.push_back(0); code = 1; }
++        else {
++            out.push_back(src[i]);
++            if (++code == 0xFF) { out[ci] = code; ci = out.size(); out.push_back(0); code = 1; }
++        }
++    }
++    out[ci] = code;
++    out.push_back(0);
++    Serial.write(out.data(), out.size());   // one write: log lines from other tasks cannot split it
++}
++
++void send(uint8_t type, const uint8_t *payload, size_t n) {
++    std::vector<uint8_t> f = {0x40, 0, type, 0, (uint8_t)(s_seq & 255), (uint8_t)(s_seq >> 8),
++                              (uint8_t)(n & 255), (uint8_t)(n >> 8)};
++    s_seq++;
++    if (n) f.insert(f.end(), payload, payload + n);
++    uint16_t c = crc16(f.data(), f.size());
++    f.push_back(c & 255);
++    f.push_back(c >> 8);
++    sendRaw(f.data(), f.size());
++}
++
++bool greeted() { return s_greeted; }
++
++String deckId() {
++    uint8_t m[6];
++    WiFi.macAddress(m);
++    char s[13];
++    snprintf(s, sizeof s, "%02X%02X%02X%02X%02X%02X", m[0], m[1], m[2], m[3], m[4], m[5]);
++    return String(s);
++}
++
++void liveLog(const String &text) {
++    if (s_greeted) consoleOutput(0, text);
++}
++
++void setConsoleRunner(void (*run)(const String &, Print &)) { s_runner = run; }
++}  // namespace DeckLink
+diff --git a/src/Kernel/DeckLink.h b/src/Kernel/DeckLink.h
+new file mode 100644
+index 0000000..0c2f8ba
+--- /dev/null
++++ b/src/Kernel/DeckLink.h
+@@ -0,0 +1,42 @@
++#pragma once
++// DeckLink: the Deck protocol 4 on the USB serial port, shared with the text console.
++//
++// The port carries two things, told apart by the first byte of each unit (docs/PROTOCOL.md,
++// "On the serial line"): 0x02 starts a COBS frame that ends with 0x00 (a frame's header is
++// 0x40 0x00 ..., so COBS always begins it with 2); anything else is a console text line up to
++// '\n'. Console commands never start with 0x02, and the server skips text lines (logs).
++//
++// The kernel answers by itself, with or without an app: ping -> hello (until host_hello), then
++// pong; console_input -> the console runs the line and the answer goes back as console_output.
++// Every other frame waits in a small queue for the Deck app (JS: DeckLink.read / DeckLink.write).
++#include <Arduino.h>
++#include <vector>
++
++namespace DeckLink {
++// Read the serial port; call often (main loop, and from apps' housekeeping).
++void poll();
++
++// The next console text line typed on the port, if any (frames never come out here).
++bool takeLine(String &line);
++
++// A frame for the app (raw, COBS removed, CRC checked), oldest first; false when none.
++bool takeFrame(std::vector<uint8_t> &frame);
++
++// Send a raw frame (header .. CRC) COBS-encoded with its 0x00, in one write.
++void sendRaw(const uint8_t *frame, size_t n);
++
++// Build and send a frame of this type (header, sequence, CRC added here).
++void send(uint8_t type, const uint8_t *payload, size_t n);
++
++// True once the server answered our hello with host_hello on this port.
++bool greeted();
++
++// The id the Deck gives in hello and console_output: the Wi-Fi MAC, 12 hex digits.
++String deckId();
++
++// A live log line (console_output with request id 0) when a server is greeted; else nothing.
++void liveLog(const String &text);
++
++// Set by main.cpp: runs one console line, writing its answer to `out`.
++void setConsoleRunner(void (*run)(const String &line, Print &out));
++}  // namespace DeckLink
+diff --git a/src/Runtime/JSBindings.cpp b/src/Runtime/JSBindings.cpp
+index 79b5a91..ad8065e 100644
+--- a/src/Runtime/JSBindings.cpp
++++ b/src/Runtime/JSBindings.cpp
+@@ -23,6 +23,7 @@
+ #include "../FileSystem/Dialogs/FilePickerDialog.h"
+ #include "../Hal/Boards/Board.h"
+ #include "../Hal/StatusLed.h"
++#include "../Kernel/DeckLink.h"
+ #include "../Settings/SettingsUI.h"
+ #include "../Hal/Bluetooth/BluetoothEngine.h"
+ #include "../Hal/GPS/GPSEngine.h"
+@@ -1765,15 +1766,15 @@ duk_ret_t JSBindings::js_screenHeight(duk_context *ctx) {
+ void consoleScreenshot();  // main.cpp
+ void touchInject(int x, int y);  // board file
+ void consolePut(const String &cmd);  // main.cpp
+-bool consoleReadLine(String &line);  // main.cpp
+ extern uint32_t g_scriptDeadline;    // main.cpp
+ static uint32_t s_appActivityMs = 0;
+ static bool s_appScreenOff = false;
+ static volatile bool s_consoleExit = false;   // console "exit": close the running app
+ void JSBindings::consolePoll() {
+     // The console's shot, tap and put also work while an app, a dialog or the exception screen waits.
++    // Lines come through DeckLink, which also answers protocol frames (ping, console_input) here.
+     String c;
+-    if (consoleReadLine(c)) {
++    if (DeckLink::takeLine(c)) {
+         if (c.equalsIgnoreCase("shot")) consoleScreenshot();
+         else if (c.equalsIgnoreCase("exit")) { s_consoleExit = true; Serial.println("EXIT OK"); }
+         else if (c.startsWith("put ")) consolePut(c);
+diff --git a/src/main.cpp b/src/main.cpp
+index bef560a..df2abfb 100644
+--- a/src/main.cpp
++++ b/src/main.cpp
+@@ -26,6 +26,7 @@
+ #include "Hal/Audio/BuiltinSounds.h"
+ #include "Hal/Bluetooth/BluetoothEngine.h"
+ #include "Hal/GPS/GPSEngine.h"
++#include "Kernel/DeckLink.h"
+ static void runConsoleLine(const String &line, Print &out);   // below: console commands
+ 
+ // Define states
+@@ -64,20 +65,9 @@ static String s_runPending;   // console "run" / System.launch: started from loo
+ void kernelRequestRun(const String &path) { s_runPending = path; }
+ uint32_t g_scriptDeadline = 0;   // console "js" scripts stop after 30 s (checked in System.delay/getTouch)
+ 
+-// Console lines from the USB port, without blocking (Serial.readStringUntil waits up to 1 s).
+-// Also used by JSBindings::consolePoll() while an app runs.
+-bool consoleReadLine(String &line) {
+-    static String buf;
+-    while (Serial.available()) {
+-        char c = (char)Serial.read();
+-        if (c == '\n') { line = buf; buf = ""; line.trim(); return true; }
+-        if (c != '\r' && buf.length() < 512) buf += c;
+-    }
+-    return false;
+-}
+-
+ void setup() {
+     Serial.begin(115200);
++    DeckLink::setConsoleRunner(runConsoleLine);   // console_input frames run the same commands
+ #if defined(ARDUINO_USB_CDC_ON_BOOT) && (ARDUINO_USB_CDC_ON_BOOT == 1)
+     Serial0.begin(115200);
+ #endif
+@@ -419,7 +409,8 @@ static void serialPut(const String &cmd) {
+ 
+ void consolePut(const String &cmd) { serialPut(cmd); }   // also used inside apps
+ 
+-// One console line from the USB port; the answer goes to out.
++// One console line, from the USB port (out = Serial) or from the server (console_input:
++// out collects the answer for console_output). main loop and DeckLink both call it.
+ static void runConsoleLine(const String &line, Print &out) {
+     String cmd = line;
+     cmd.trim();
+@@ -730,8 +721,9 @@ void loop() {
+         }
+     }
+ 
+-    // Console: text lines typed on the USB port (help lists the commands).
+-    { String cmd; if (consoleReadLine(cmd)) runConsoleLine(cmd, Serial); }
++    // Console: text lines typed on the USB port. Protocol frames on the same port are taken by
++    // DeckLink (ping/hello, console_input, the rest queued for the Deck app).
++    { String cmd; if (DeckLink::takeLine(cmd)) runConsoleLine(cmd, Serial); }
+ 
+     // Background WiFi monitoring and auto-reconnect
+     WiFiManager::backgroundLoop();
+-- 
+2.47.3
+

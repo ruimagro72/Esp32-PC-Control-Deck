@@ -1,0 +1,134 @@
+From b4c79a6d0b1e7e071f3c5c976efb47cfaa5c7a0d Mon Sep 17 00:00:00 2001
+From: ESP32 PC Control Deck <noreply@example.invalid>
+Date: Fri, 13 Nov 2026 10:52:23 +0000
+Subject: [PATCH 2/3] Deck layer: shell.js as the main screen, autoexec.js,
+ System.setShell()
+
+NOT FOR UPSTREAM (ESP32 PC Control Deck only).
+
+- /sd/autoexec.js runs once at start.
+- /sd/shell.js, when present, replaces KryonOS's launcher as the main
+  screen; it runs until it launches an app (System.launch) and comes back
+  after. Leaving it without a launch, or 3 quick failures in a row, falls
+  back to KryonOS's launcher (safe mode) until restart.
+- System.setShell(path) picks another shell, or "" for the launcher.
+
+
+---
+ src/Runtime/JSBindings.cpp |  9 +++++++++
+ src/main.cpp               | 39 ++++++++++++++++++++++++++++++++++----
+ 2 files changed, 44 insertions(+), 4 deletions(-)
+
+diff --git a/src/Runtime/JSBindings.cpp b/src/Runtime/JSBindings.cpp
+index ad8065e..b0dcfcb 100644
+--- a/src/Runtime/JSBindings.cpp
++++ b/src/Runtime/JSBindings.cpp
+@@ -3967,6 +3967,14 @@ static duk_ret_t js_sys_launch(duk_context *ctx) {
+     return 0;
+ }
+ 
++// System.setShell(path): the main screen to run (the Deck's shell, another one, or "" for
++// KryonOS's own launcher). Meant for /sd/autoexec.js.
++void kernelSetShell(const String &path);  // main.cpp
++static duk_ret_t js_sys_setShell(duk_context *ctx) {
++    kernelSetShell(String(duk_require_string(ctx, 0)));
++    return 0;
++}
++
+ static duk_ret_t js_sys_screenshot(duk_context *ctx) {
+     (void)ctx;
+     consoleScreenshot();
+@@ -5363,6 +5371,7 @@ void JSBindings::init(duk_context *ctx, TFT_eSPI *tft) {
+     duk_push_c_function(ctx, js_sys_ledEffect, 5); duk_put_prop_string(ctx, -2, "ledEffect");
+     duk_push_c_function(ctx, js_sys_screenshot, 0); duk_put_prop_string(ctx, -2, "screenshot");
+     duk_push_c_function(ctx, js_sys_launch, 1); duk_put_prop_string(ctx, -2, "launch");
++    duk_push_c_function(ctx, js_sys_setShell, 1); duk_put_prop_string(ctx, -2, "setShell");
+     duk_push_c_function(ctx, js_restart, 0);
+     duk_put_prop_string(ctx, -2, "restart");
+     
+diff --git a/src/main.cpp b/src/main.cpp
+index df2abfb..897114c 100644
+--- a/src/main.cpp
++++ b/src/main.cpp
+@@ -61,9 +61,18 @@ int currentState = STATE_LAUNCHER;
+ static unsigned long s_lastActivityMs = 0;
+ static bool s_isDisplaySleeping = false;
+ static bool s_wasCharging = false;
+-static String s_runPending;   // console "run" / System.launch: started from loop()
++static String s_runPending;   // console "run" / autoexec / System.launch: started from loop()
++static bool s_shellOn = false; // /sd/shell.js is the Deck's main screen (KryonOS launcher = safe mode)
++extern int lastState;
++static String s_shellPath = "/sd/shell.js";   // System.setShell() in autoexec.js changes it
+ void kernelRequestRun(const String &path) { s_runPending = path; }
+ uint32_t g_scriptDeadline = 0;   // console "js" scripts stop after 30 s (checked in System.delay/getTouch)
++void kernelSetShell(const String &path) {
++    s_shellPath = path;
++    s_shellOn = path.length() > 0 && FileSystem::exists(path.c_str());
++    if (!s_shellOn) lastState = -1;   // no shell: show KryonOS's launcher
++    Serial.println("[shell] " + (s_shellOn ? path : String("KryonOS launcher")));
++}
+ 
+ void setup() {
+     Serial.begin(115200);
+@@ -203,11 +212,17 @@ void setup() {
+ 
+     s_lastActivityMs = millis();
+ 
++    s_shellOn = FileSystem::exists("/sd/shell.js");
++    if (s_shellOn) Serial.println("[shell] /sd/shell.js");
++    if (FileSystem::exists("/sd/autoexec.js")) {
++        Serial.println("[autoexec] /sd/autoexec.js");
++        s_runPending = "/sd/autoexec.js";
++    }
+     Serial.println("DEBUG: Setup complete, entering loop!");
+-
++    
+     // Initial draw
+     if (currentState == STATE_LAUNCHER) {
+-        LauncherUI::draw();
++        if (!s_shellOn) LauncherUI::draw();   // with a shell, the Deck draws the screen
+     } else if (currentState == STATE_UPDATER_BOOT) {
+         SettingsUI::drawUpdater(true);
+     }
+@@ -472,6 +487,7 @@ static void runConsoleLine(const String &line, Print &out) {
+         out.println("  rotate 0|1      : portrait / landscape (saved), restarts");
+         out.println("  run <file.js>   : run a script or app (/sd/... or /local/...)");
+         out.println("  js <code>       : run one line of JavaScript now");
++        out.println("  /sd/autoexec.js runs once at start; /sd/shell.js is the main screen");
+     } else {
+         out.println("unknown command: " + cmd + " (help lists them)");
+     }
+@@ -486,6 +502,21 @@ void loop() {
+         g_scriptDeadline = 0;
+         currentState = STATE_LAUNCHER;
+         lastState = -1;   // redraw the launcher
++    } else if (s_shellOn && currentState == STATE_LAUNCHER) {
++        // The shell runs until it launches an app (System.launch) or exits. Exit without a
++        // launch, or 3 quick failures in a row, leave the shell: KryonOS's launcher (safe mode).
++        static uint8_t quickFails = 0;
++        uint32_t t0 = millis();
++        HarixKernel::runFile(s_shellPath.c_str());
++        if (!s_runPending.length()) {
++            if (millis() - t0 < 2000 && ++quickFails < 3) return;
++            s_shellOn = false;
++            Serial.println("[shell] left: KryonOS launcher until restart");
++        } else {
++            quickFails = 0;
++        }
++        lastState = -1;
++        return;
+     }
+ 
+     // Poll Bluetooth HAL events
+@@ -496,7 +527,7 @@ void loop() {
+             tft.fillScreen(TFT_BLACK); // Completely wipe screen when changing states!
+         }
+         int oldState = currentState;
+-        if (currentState == STATE_LAUNCHER) LauncherUI::draw();
++        if (currentState == STATE_LAUNCHER) { if (!s_shellOn) LauncherUI::draw(); }
+         else if (currentState == STATE_SETTINGS) SettingsUI::draw();
+         else if (currentState == STATE_INSTALLER) InstallerUI::draw();
+         else if (currentState == STATE_CALIBRATOR) TouchCalibrator::runCalibration();
+-- 
+2.47.3
+

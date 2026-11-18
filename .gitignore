@@ -1,0 +1,16 @@
+# Per-device files: the owner's deck config, VNC config, Wi-Fi credentials, keys. Never commit.
+deck.json
+vnc.json
+wifi_credentials.enc
+*.pk8
+.env
+
+# Editor and OS
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*~
+*.tmp
+__pycache__/
+*.pyc

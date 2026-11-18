@@ -1,0 +1,12 @@
+{
+  "name": "Deck",
+  "packageName": "dev.controldeck.deck",
+  "version": "0.1.0",
+  "author": "ESP32 PC Control Deck",
+  "description": "The Deck client: PC stats and macros from the Control Deck server over Wi-Fi.",
+  "type": "App",
+  "category": "Utility",
+  "api": 2,
+  "main": "main.js",
+  "paths": { "data": "/sd/UserData/deck" }
+}

@@ -1,0 +1,11 @@
+{
+  "name": "Deck Shell",
+  "packageName": "dev.controldeck.deckshell",
+  "version": "0.1.0",
+  "author": "ESP32 PC Control Deck",
+  "description": "Back to the Deck's main screen (/sd/shell.js) from KryonOS's launcher.",
+  "type": "App",
+  "category": "System",
+  "api": 2,
+  "main": "main.js"
+}
