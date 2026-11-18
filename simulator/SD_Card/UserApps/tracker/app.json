@@ -1,0 +1,10 @@
+{
+  "name": "Tracker",
+  "packageName": "dev.controldeck.tracker",
+  "version": "0.1.0",
+  "type": "App",
+  "category": "Media",
+  "api": 3,
+  "main": "main.js",
+  "description": "MOD tracker view: pattern rows, oscilloscope, previous/play/next (engine in the kernel)"
+}

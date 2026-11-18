@@ -1,0 +1,13 @@
+{
+  "name": "VNC Bench",
+  "packageName": "dev.controldeck.vncbench",
+  "version": "0.1.0",
+  "author": "ESP32 PC Control Deck",
+  "description": "VNC client test bench: Raw/Hextile RGB565 over a WebSocket bridge (Java, server or tools/vnc-bridge.sh), shows fps and KB/s.",
+  "type": "App",
+  "category": "Utility",
+  "api": 2,
+  "main": "main.js",
+  "changelog": "First test version.",
+  "paths": { "data": "/sd/UserData/vnc" }
+}

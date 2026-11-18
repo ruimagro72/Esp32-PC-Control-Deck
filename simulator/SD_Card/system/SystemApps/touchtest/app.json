@@ -1,0 +1,9 @@
+{
+  "name": "Touch Test",
+  "packageName": "dev.controldeck.touchtest",
+  "version": "0.1.0",
+  "type": "App",
+  "category": "System",
+  "api": 3,
+  "main": "main.js"
+}

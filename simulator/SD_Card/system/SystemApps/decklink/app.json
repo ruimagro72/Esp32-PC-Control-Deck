@@ -1,0 +1,11 @@
+{
+  "name": "Deck Link",
+  "packageName": "dev.controldeck.decklink",
+  "version": "0.1.0",
+  "author": "ESP32 PC Control Deck",
+  "description": "The Deck's BLE service for the server bridge: passkey pairing, link state, data in/out.",
+  "type": "App",
+  "category": "System",
+  "api": 3,
+  "main": "main.js"
+}

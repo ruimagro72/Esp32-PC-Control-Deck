@@ -1,0 +1,1 @@
+Texto de teste em UTF-8: ação, coração, pão, maçã, Évora, ç ã õ é ê.

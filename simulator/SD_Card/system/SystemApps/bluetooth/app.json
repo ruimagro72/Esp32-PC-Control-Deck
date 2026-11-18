@@ -1,0 +1,11 @@
+{
+  "name": "Bluetooth",
+  "packageName": "dev.controldeck.bluetooth",
+  "version": "0.1.0",
+  "author": "ESP32 PC Control Deck",
+  "description": "Bluetooth status, visibility and scan for the Deck.",
+  "type": "App",
+  "category": "System",
+  "api": 3,
+  "main": "main.js"
+}

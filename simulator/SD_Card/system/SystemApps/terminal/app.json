@@ -1,0 +1,11 @@
+{
+  "name": "Terminal",
+  "packageName": "dev.controldeck.terminal",
+  "version": "0.1.0",
+  "author": "ESP32 PC Control Deck",
+  "description": "A shell on the Deck: type commands (touch keyboard, or a hardware keyboard through Keyboard.getKey) and see the output on the screen.",
+  "type": "App",
+  "category": "System",
+  "api": 2,
+  "main": "main.js"
+}
