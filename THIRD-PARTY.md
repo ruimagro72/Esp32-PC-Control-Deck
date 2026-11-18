@@ -1,0 +1,28 @@
+# Third-party components and licences
+
+The licence of the project's own code (firmware layer, server, simulator) is owner to decide. This table covers only the third-party components and their licences. The root [`LICENSE`](LICENSE) file is the GPL-3.0 text; it is not a statement of the project's own licence.
+
+"To confirm" means the licence is not stated in the repository and has not been checked against the upstream source.
+
+| Component | Where in this repository | Licence | Source and notes |
+|---|---|---|---|
+| KryonOS (base of the firmware) | `firmware/` (except the parts below), `firmware/README.md`, `firmware/LICENSE` | GPL-3.0 (upstream base; the Deck's own layer: owner to decide) | [Haris16-code/KryonOS](https://github.com/Haris16-code/KryonOS), release v3.0.0. Our changes are in `docs/upstream/` as patches. `firmware/README.md` is the upstream README. |
+| Duktape 2.7.0 (JavaScript engine) | `firmware/src/Runtime/duktape.c`, `duktape.h` | MIT | Header: Copyright 2013-present Duktape authors. Git commit 03d4d72 (from the header). |
+| ESP8266Audio `AudioGeneratorMOD` decoder, via Win-95-Tracker-Cyd | `firmware/src/Hal/Audio/MODPlayer.h`, `MODPlayer.cpp` | GPL (version to confirm) | Header: "GPL licensed", by Earle F. Philhower III. Taken from [ivans805/Win-95-Tracker-Cyd](https://github.com/ivans805/Win-95-Tracker-Cyd), whose own licence is to confirm. `ModPlayer.cpp/.h` (task and API) are ours. |
+| minimp3 | `firmware/src/Hal/Audio/minimp3.h` | CC0 1.0 (public domain dedication) | Header; [lieff/minimp3](https://github.com/lieff/minimp3). |
+| TFT_Touch, adapted to FT6336G | `firmware/lib/TFT_Touch/` | To confirm | Adapted from the LCDWiki ES3C28P / ESP32-32E demo package (`Install libraries/TFT_Touch`). `library.properties` names Bodmer as original author. The folder has no licence file. |
+| LCDWiki ES3C28P demo code (base for the board port) | `docs/upstream/A-board-es3c28p/` (patch 0001 includes the vendor touch library) | To confirm | Board vendor package; no licence text in the repository. |
+| `decknet.js` (Deck protocol 4 in JavaScript) | `firmware/apps/lib/decknet.js` | Owner to decide | Project code. The header has no licence line. |
+| Simulator launcher and SD-card tools | `simulator/` | Owner to decide | Project code. Built against GTK3 and SDL2 through pkg-config (system libraries, not redistributed; their licences to confirm). |
+| Server BLE bridge | `server/ble-bridge/` | Owner to decide | Project code. Links dynamically to libsystemd (sd-bus), LGPL-2.1, from the system (not redistributed). |
+| KryonOS v3.0.0 prebuilt images | `simulator/emu/firmware/kryonos-v3/` | GPL-3.0 (upstream release) | Release assets of KryonOS v3.0.0, see `simulator/emu/firmware/manifest.json`. Release binaries are not built from source here. |
+| `simulator/emu/firmware/es3c28p/` | `simulator/emu/firmware/es3c28p/` | Owner to decide | Local build of this repository's own firmware (`es3c28p_emu`). Contains KryonOS code (GPL-3.0, see the KryonOS row). |
+| esp-emu 1.1.0 (Espressif emulator) | `simulator/esp-emu-1.1.0-x86_64-unknown-linux-gnu/` (not tracked in git) | To confirm | Binary, not redistributed; the user installs it locally. See `simulator/README.md`. |
+| Bumble (BLE controller, Python, `pip install bumble`) | `simulator/tests/ble_hci_check.sh`; venv in `Resources/` (not tracked) | To confirm | Used only by the local BLE test, not redistributed. |
+| PlatformIO libraries (`TFT_eSPI`, `TJpg_Decoder`, `PNGdec`, `TinyGPSPlus`, `ArduinoJson`, `ESPAsyncWebServer`, `WebSockets`) | `firmware/platformio.ini` (`lib_deps`) | To confirm | Fetched at build time, not in the repository. |
+| Flappy Bird sound effects (credited to the original game) | `simulator/SD_Card/system/SystemApps/categories/Games/flappy-bird/` | To confirm | The app's own About text credits .GEARS Studios / Dong Nguyen. Terms of use not stated. Consider removing before a public export. |
+| Menu track "The Mountain - Retro Game" | Named in the flappy-bird app (`main.js`); audio file not checked | To confirm | The app calls it royalty-free. Source and terms not in the repository. |
+| freetouse.com MP3 files (7) | `simulator/SD_Card/UserData/Multimedia/Audio/MP3/` | To confirm | Terms not in the repository. Exclude from any public export unless the terms allow redistribution. |
+| `docs/archive/legacy/LICENSE-legacy-MIT` | `docs/archive/legacy/` | MIT (Copyright 2026 Wojciech Lepczynski) | Legacy archive licence file. Not referenced by any code. To confirm which code it covers. |
+
+Libraries linked on the PC side (`server/`) are listed in `server/pom.xml`; their licences are not checked here (to confirm).
