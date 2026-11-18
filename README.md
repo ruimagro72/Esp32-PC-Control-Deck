@@ -9,9 +9,9 @@ of KryonOS, and the rest is in the branches below.
 
 ## Demo
 
-[![The simulator launcher running KryonOS on the emulated ES3C28P](docs/media/simulator-demo.jpg)](https://github.com/ruimagro72/Esp32-PC-Control-Deck/blob/simulator/docs/simulator/media/simulator-demo.mp4)
+<video src="https://github.com/ruimagro72/Esp32-PC-Control-Deck/raw/simulator/docs/simulator/media/simulator-demo.mp4" controls muted width="720"></video>
 
-Click the picture to open the video (2.5 minutes): the simulator launcher, the hardware profile, KryonOS 3.0.0 booting on the emulated board, and the built-in help.
+The simulator launcher, the hardware profile, KryonOS 3.0.0 booting on the emulated board, and the built-in help (2.5 minutes).
 
 ## Parts
 
