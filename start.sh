@@ -558,11 +558,11 @@ scan() {
 
 # ----- public branches (export) --------------------------------------------
 
-# The five public branches are built inside this repo with git plumbing, from committed content
+# The four public branches are built inside this repo with git plumbing, from committed content
 # (HEAD) plus the per-branch overlay files in export/<branch>/ (README, CHANGELOG, .gitignore and the
 # docs that differ per branch). Results go to refs/heads/public/<branch>. HEAD, the working branch and
 # the working tree are not changed, and nothing is copied out of the repo.
-EXPORT_BRANCHES="main kryonos deck server simulator"
+EXPORT_BRANCHES="main deck server simulator"
 EXPORT_DIR="$ROOT/export"
 EXPORT_REF_PREFIX="refs/heads/public"
 EXPORT_AUTHOR_NAME="ruimagro72"
@@ -584,21 +584,21 @@ export_branches_for() {
         simulator/SD_Card/*) echo "simulator" ;;
         simulator/emu/firmware/*/*|simulator/emu/firmware/*.bin) ;;
         firmware/apps/KryonOS-AppStore/categories/utilities/vnc/*) ;;
-        LICENSE) echo "main kryonos" ;;
+        LICENSE) echo "main" ;;
         start.sh|docs/BRANCHES.md) echo "main" ;;
-        README.md|CHANGELOG.md|THIRD-PARTY.md) echo "main deck kryonos server simulator" ;;
-        .gitignore) echo "deck kryonos server simulator" ;;
-        docs/README.md) echo "deck kryonos" ;;
+        README.md|CHANGELOG.md|THIRD-PARTY.md) echo "main deck server simulator" ;;
+        .gitignore) echo "deck server simulator" ;;
+        docs/README.md) echo "deck" ;;
         docs/04-PROTOCOL.md|docs/05-SECURITY.md) echo "deck server" ;;
         docs/03-SERVER.md|server/*) echo "server" ;;
-        docs/02-FIRMWARE-KRYONOS.md|docs/06-UPSTREAM-KRYONOS.md|docs/firmware/KEYBOARD_TERMINAL.md) echo "kryonos" ;;
-        docs/upstream/README.md|docs/upstream/A-*|docs/upstream/B-*|docs/upstream/C-*) echo "kryonos" ;;
+        docs/02-FIRMWARE-KRYONOS.md|docs/06-UPSTREAM-KRYONOS.md|docs/firmware/KEYBOARD_TERMINAL.md) ;;   # KryonOS part: owner fork, not exported
+        docs/upstream/README.md|docs/upstream/A-*|docs/upstream/B-*|docs/upstream/C-*) ;;
         docs/upstream/D-deck-layer/*|docs/firmware/OTA.md|docs/firmware/UI_FROM_SERVER.md) echo "deck" ;;
         docs/simulator/*|simulator/*) echo "simulator" ;;
         firmware/apps/deck/*|firmware/apps/decklink/*|firmware/apps/deckshell/*|firmware/apps/shell/*) echo "deck" ;;
         firmware/apps/bluetooth/*|firmware/apps/vnc/*|firmware/apps/lib/decknet.js) echo "deck" ;;
         firmware/tools/Send.java|firmware/tools/deck-monitor.sh|firmware/tools/vnc-bridge.sh) echo "deck" ;;
-        firmware/*) echo "kryonos" ;;
+        firmware/*) ;;
         *) ;;
     esac
 }

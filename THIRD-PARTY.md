@@ -6,7 +6,7 @@ The project's own code (firmware layer, server) has no restrictions. The simulat
 
 | Component | Where in this repository | Licence | Source and notes |
 |---|---|---|---|
-| KryonOS (base of the firmware) | `firmware/` (except the parts below), `firmware/README.md`, `firmware/LICENSE` | GPL-3.0 (upstream base; the Deck's own layer: owner's code, no restrictions) | [Haris16-code/KryonOS](https://github.com/Haris16-code/KryonOS), release v3.0.0. Our changes are in `docs/upstream/` as patches. `firmware/README.md` is the upstream README. |
+| KryonOS (base of the firmware) | KryonOS fork, branch `es3c28p-support` ([ruimagro72/KryonOS](https://github.com/ruimagro72/KryonOS)); in the assembled tree, `firmware/` except the parts below | GPL-3.0 (upstream base; the Deck's own layer: owner's code, no restrictions) | [Haris16-code/KryonOS](https://github.com/Haris16-code/KryonOS), release v3.0.0. Our changes are commits on the fork's branch and patch files in `docs/upstream/`. The upstream README and `LICENSE` are in the fork. |
 | Duktape 2.7.0 (JavaScript engine) | `firmware/src/Runtime/duktape.c`, `duktape.h` | MIT | Header: Copyright 2013-present Duktape authors. Git commit 03d4d72 (from the header). |
 | ESP8266Audio `AudioGeneratorMOD` decoder, via Win-95-Tracker-Cyd | `firmware/src/Hal/Audio/MODPlayer.h`, `MODPlayer.cpp` | GPL (version to confirm) | Header: "GPL licensed", by Earle F. Philhower III. Taken from [ivans805/Win-95-Tracker-Cyd](https://github.com/ivans805/Win-95-Tracker-Cyd), whose own licence is to confirm. `ModPlayer.cpp/.h` (task and API) are ours. |
 | minimp3 | `firmware/src/Hal/Audio/minimp3.h` | CC0 1.0 (public domain dedication) | Header; [lieff/minimp3](https://github.com/lieff/minimp3). |

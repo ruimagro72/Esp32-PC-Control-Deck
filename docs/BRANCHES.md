@@ -1,24 +1,27 @@
 # Branches
 
-The repository is organised in four independent branches. Each one has its own purpose, its own release rhythm and its own README. Work on one branch does not need the others to build or run, except where noted below.
+The project is published in two repositories. Each part has its own purpose, its own release rhythm and its own README. Work on one part does not need the others to build or run, except where noted below.
 
-| Branch | Content | Runs on |
+- The KryonOS part is a fork of KryonOS: https://github.com/ruimagro72/KryonOS, branch `es3c28p-support` (KryonOS 3.0.0 plus the board support).
+- This repository has four branches: `main`, `deck`, `server` and `simulator`.
+
+| Part | Content | Runs on |
 | --- | --- | --- |
-| `kryonos` | KryonOS 3.0 with support for the LCDWiki ES3C28P 2.8 inch board | ESP32-S3 board |
+| KryonOS fork (`es3c28p-support`) | KryonOS 3.0 with support for the LCDWiki ES3C28P 2.8 inch board | ESP32-S3 board |
 | `deck` | The Deck application: `firmware/apps/deck`, `decknet`, the shell and the Deck apps | Inside KryonOS on the board |
 | `server` | The Java host on the PC: REST API, protocol 4, macros, telemetry, firmware store | PC (JDK 21+) |
 | `simulator` | ESP32 emulator front-end: esp-emu binary, SDL cosim host, GTK launcher | PC (Linux) |
 
 ## Branch details
 
-### `kryonos`
+### KryonOS fork (`es3c28p-support`)
 
-- KryonOS 3.0 with the support for the LCDWiki ES3C28P 2.8 inch board (ESP32-S3).
-- Patch groups, as in `docs/upstream/`: **B** (fixes valid on every board), **A** (board and ES8311 audio), **C** (console and JavaScript API).
-- Kept here for now: the kernel-side DeckLink support that the Deck needs (optional for other users).
-- Status of the upstream work: the patches are prepared, not yet sent. The branch evolves until the KryonOS team decides whether to support the board.
-- The branch will reopen for two things: the 3.5 inch LCDWiki E32R35T (classic ESP32, no PSRAM), and corrections to the 2.8 inch support.
-- Details: `docs/06-UPSTREAM-KRYONOS.md` and `docs/upstream/README.md` (in the `kryonos` branch).
+- KryonOS 3.0 with the support for the LCDWiki ES3C28P 2.8 inch board (ESP32-S3). The fork is https://github.com/ruimagro72/KryonOS, branch `es3c28p-support`; it is not a branch of this repository.
+- Our changes are commits on top of KryonOS 3.0.0. Patch groups, as in `docs/upstream/`: **B** (fixes valid on every board), **A** (board and ES8311 audio), **C** (console and JavaScript API).
+- Not in the fork: the Deck layer (group D), including the kernel-side DeckLink support that the Deck needs (optional for other users).
+- Status of the upstream work: the patches are prepared, not yet sent. The fork evolves until the KryonOS team decides whether to support the board.
+- The fork will get two things: the 3.5 inch LCDWiki E32R35T (classic ESP32, no PSRAM), and corrections to the 2.8 inch support.
+- Details: `docs/06-UPSTREAM-KRYONOS.md` and `docs/upstream/README.md` (in the project's `docs/` folder).
 
 ### `deck`
 
@@ -41,14 +44,14 @@ The repository is organised in four independent branches. Each one has its own p
 
 ## How the pieces fit
 
-- The firmware image is built from `kryonos` plus the files of `deck`. The composition is described in each branch README.
+- The firmware image is built from the KryonOS fork plus the files of `deck`. The composition is described in each branch README.
 - `./start.sh build` compiles the firmware tree in `firmware/` for the board (`ENV=es3c28p`).
 - The Deck app talks to the `server` branch over USB, Bluetooth LE or Wi-Fi, using protocol 4.
 - The `simulator` branch runs the firmware image on the PC, so the board, the Deck app and the server can be tested together without hardware.
 
 ## Status
 
-- `kryonos`: 2.8 inch support working, tested on hardware on 13 Nov 2026 and in the emulator on 18 Nov 2026.
+- KryonOS fork: 2.8 inch support working, tested on hardware on 13 Nov 2026 and in the emulator on 18 Nov 2026.
 - `deck`: working on hardware. The SD layout needs the KryonOS default (see the roadmap in the `deck` branch).
 - `server`: stable, protocol 4.
 - `simulator`: usable, with the limits listed in `simulator/README.md` (in the `simulator` branch).
