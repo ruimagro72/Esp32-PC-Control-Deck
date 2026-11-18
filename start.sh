@@ -577,6 +577,10 @@ export_branches_for() {
         docs/simulator/emu/KRYONOS-V3.0.0-PREP.md) ;;
         simulator/logs/*|simulator/build/*|server/var/*) ;;
         simulator/mockup_studio/*|simulator/mockup_launcher/*) ;;
+        # Third-party media is not exported; origins and copy paths: docs/simulator/TEST-MEDIA.md
+        simulator/SD_Card/UserData/Multimedia/Audio/Modules/*.mod|simulator/SD_Card/UserData/Multimedia/Audio/Modules/*.it) ;;
+        simulator/SD_Card/UserData/Multimedia/Audio/MP3/*"(freetouse.com).mp3") ;;
+        simulator/SD_Card/system/SystemApps/categories/Games/flappy-bird/assets/assets_audio_sfx_*.wav|simulator/SD_Card/system/SystemApps/categories/Games/flappy-bird/assets/the_mountain-retro-game-*.wav) ;;
         simulator/SD_Card/*) echo "simulator" ;;
         simulator/emu/firmware/*/*|simulator/emu/firmware/*.bin) ;;
         firmware/apps/KryonOS-AppStore/categories/utilities/vnc/*) ;;
