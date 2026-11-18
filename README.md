@@ -2,12 +2,12 @@
 
 The Deck is the application that runs on the board inside KryonOS: the Deck screen (PC stats and macros), the Deck link
 (USB, Bluetooth LE or Wi-Fi), the Deck shell, the Bluetooth page and the VNC client. It is not a program of its own: it
-never runs on its own. It needs two other branches:
+never runs on its own. It needs two other parts:
 
-- `kryonos`: the KryonOS 3.0.0 firmware with the board support and the Deck's kernel parts (`DeckLink`, `DeckOta`).
+- KryonOS: the KryonOS 3.0.0 fork with the board support (https://github.com/ruimagro72/KryonOS, branch `es3c28p-support`). The Deck's kernel parts (`DeckLink`, `DeckOta`) are not in the fork.
 - `server`: the Java host on the PC, protocol 4 (`docs/04-PROTOCOL.md`).
 
-Extract the three branches into one folder with `main` (see the `main` branch README).
+Assemble the tree as described in the `main` branch README.
 
 ## What is here
 
@@ -36,11 +36,11 @@ own folder: KryonOS asks for storage permission outside the app folder.
 - Per-device files (`deck.json`, `vnc.json`, `wifi_credentials.enc`) are never copied by the deploy: write them on the card.
   The example is `firmware/apps/vnc/vnc.example.json`. Write real secrets only on the card, never in a file of this repository.
 
-## VNC (moved here from the kryonos branch)
+## VNC (moved here from the KryonOS fork)
 
 The app is a JavaScript client. App, then WebSocket, then the server's Java bridge (or `tools/vnc-bridge.sh`), then a VNC
 server on the PC (for example krfb). `tools/deck-monitor.sh` makes a virtual monitor the Deck's size (240x304 portrait).
-Figures from the project notes (`docs/02` and `docs/06` in the kryonos branch): raw 16-bit about 3 fps (network-bound, about 400 KB/s); hextile 0.7 fps (JavaScript-bound).
+Figures from the project notes (`docs/02` and `docs/06` of the project): raw 16-bit about 3 fps (network-bound, about 400 KB/s); hextile 0.7 fps (JavaScript-bound).
 Conclusion: JavaScript can steer; decoding must be native C.
 
 ## Status (18 Nov 2026)
@@ -55,4 +55,4 @@ Conclusion: JavaScript can steer; decoding must be native C.
 
 The Deck layer is the owner's own code. It has no restrictions: it is free to use, modify and sell, commercial or not,
 provided as is, without warranty. No formal licence file is included. The KryonOS parts it runs on are under GPL-3.0
-(`kryonos` branch).
+(the KryonOS fork, branch `es3c28p-support`).
