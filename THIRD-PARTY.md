@@ -1,6 +1,6 @@
 # Third-party components and licences (server branch)
 
-The licence of the server code is to be defined by the owner. This table covers only the third-party components used by
+The server code is the owner's own code, with no restrictions. This table covers only the third-party components used by
 this branch. "To confirm" means the licence is not stated in the repository and has not been checked against the upstream
 source.
 
