@@ -7,6 +7,12 @@ The project is published in two repositories. This repository (branch `main`) ho
 changelog, the third-party notices, the GPL-3.0 text and `start.sh`, the single entry point. The KryonOS part is a fork
 of KryonOS, and the rest is in the branches below.
 
+## Demo
+
+[![The simulator launcher running KryonOS on the emulated ES3C28P](docs/media/simulator-demo.jpg)](https://github.com/ruimagro72/Esp32-PC-Control-Deck/blob/simulator/docs/simulator/media/simulator-demo.mp4)
+
+Click the picture to open the video (2.5 minutes): the simulator launcher, the hardware profile, KryonOS 3.0.0 booting on the emulated board, and the built-in help.
+
 ## Parts
 
 | Part | Where | What it is |
