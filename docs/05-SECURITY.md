@@ -100,6 +100,15 @@ password connects to `ws://PC:5911` and gets the PC's screen, keyboard and mouse
 - Fix: bind the WS bridge to the Deck's address (or localhost) rather than `0.0.0.0`; require the
   same Bearer token on the WebSocket upgrade; send the VNC password only over an encrypted link
   (H1); stop the monitor as soon as the Deck leaves (the DELETE path exists, make it automatic).
+- Status (18 Nov 2026): partly fixed. The WS bridge listens on the API's bind address (`api.bind`,
+  loopback by default; no new config key) and refuses every upgrade without an accepted Bearer token,
+  loopback included (`display/WsTcpBridge.java`, `display/VirtualMonitor.java`; self-tests in
+  `selftest/IntegrationTests.java`). Still open: krfb-virtualmonitor has no listen-address option
+  (`--port` only), so krfb on 5910 still accepts LAN connections on every interface and the VNC
+  password is its only lock. The Deck's VNC app (`firmware/apps/vnc/main.js:503`, a plain
+  `new WebSocket(url, "binary")`) sends no Authorization header yet, so it cannot connect until the
+  firmware sends the token (the native path accepts extra headers, `WebSocketClient.cpp:46`). H1 and
+  the auto-stop are still open.
 
 ### H3. The native OTA does not validate the server certificate (MITM = malicious firmware)
 `TLSHelper::configureTLS` calls `client.setInsecure()`, and the OTA uses it for both the manifest
@@ -133,6 +142,10 @@ device before `Update.begin`, and the download must be over the authenticated (i
 Tokens are bearer secrets stored as SHA-256; rotating invalidates all. There is no expiry and no
 tie to a Deck's identity (MAC) at use time. Enough for home use; for more, bind a token to a Deck
 id and add expiry/rotation.
+- Status (18 Nov 2026): partly fixed. A Deck's token is bound to its Deck id: `/api/deck` refuses,
+  before any frame acts, a request whose frames name another Deck (`PeerAuth.requireOwnDeck`,
+  called from `Router.deckFrames`). The shared token and loopback name any Deck. Frames without a
+  Deck id (history, inventory, config, ping) are not checked. Still open: expiry and rotation per Deck.
 
 ## LOW / to watch
 

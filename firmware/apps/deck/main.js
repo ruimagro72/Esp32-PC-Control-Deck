@@ -1,7 +1,7 @@
 // Deck client: stats and macros from the Control Deck server (protocol 4 over Wi-Fi,
 // POST /api/deck, base64 text). Settings in deck.json (<paths.data>/deck.json, read from the
 // per-app paths descriptor in app.json: /sd/UserData/deck): {"server","token","id"}.
-// Offline mode: sample.b64 (a captured answer) when the server cannot be reached.
+// Offline: when the server cannot be reached the footer says so and the app tries again every 10 s.
 eval(FS.readTextFile("decknet.js"));     // inside the app folder: outside it KryonOS asks for storage permission
 var W = Display.width(), H = Display.height();
 function rgb(r, g, b) { var c = ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3); return c; }
@@ -50,11 +50,8 @@ function talk(frames) {
         cfg.server, cfg.token, frames);
     if (r.error) {
         status = r.error.substring(0, 30);
-        var s = null;
-        try { s = FS.readTextFile("sample.b64"); } catch (e) {}
-        if (!s) return null;
-        offline = true;
-        return DeckNet.parse(DeckNet.b64dec(s));
+        offline = true;                              // the loop retries (every 10 s) while offline
+        return null;
     }
     offline = false; status = "";
     return r.messages;

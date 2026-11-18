@@ -13,20 +13,18 @@ Assemble the tree as described in the `main` branch README.
 
 | Path | What it is |
 |---|---|
-| `firmware/apps/deck/` | Deck client: stats and macros from the server (`decknet.js` is loaded from the app folder) |
+| `firmware/apps/deck/` | Deck client: stats and macros from the server; `decknet.js` (the protocol 4 in JavaScript) is loaded from the app folder |
 | `firmware/apps/decklink/` | Deck link page: Bluetooth LE service to the server, passkey, link state |
 | `firmware/apps/deckshell/` | entry in the Home that switches the main screen to the Deck shell |
 | `firmware/apps/shell/` | the Deck shell (`shell.js`) and `autoexec.js` |
 | `firmware/apps/bluetooth/` | Bluetooth page: status, advertising, scan, BLE keyboard |
 | `firmware/apps/vnc/` | VNC client (virtual monitor mode, `vnc.example.json`) |
-| `firmware/apps/lib/decknet.js` | the protocol 4 in JavaScript, for other apps (`eval(FS.readTextFile("/sd/lib/decknet.js"))`) |
 | `firmware/tools/Send.java`, `deck-monitor.sh`, `vnc-bridge.sh` | PC-side tools (a sender, a virtual monitor for VNC, a VNC bridge) |
 | `docs/upstream/D-deck-layer/` | the Deck layer as patch files against KryonOS (for rebasing, not for upstream) |
 | `docs/firmware/OTA.md`, `docs/firmware/UI_FROM_SERVER.md` | signed OTA from the server; the UI sent by the server (proposal) |
 | `docs/04-PROTOCOL.md`, `docs/05-SECURITY.md` | the protocol and the security model (shared with `server`) |
 
-`firmware/apps/deck/decknet.js` and `firmware/apps/lib/decknet.js` are the same file. The Deck app reads its copy from its
-own folder: KryonOS asks for storage permission outside the app folder.
+The Deck app reads `decknet.js` from its own folder: KryonOS asks for storage permission outside the app folder.
 
 ## Putting the apps on the card
 
