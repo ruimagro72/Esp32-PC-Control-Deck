@@ -5,11 +5,15 @@ import java.security.SecureRandom;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 /**
  * A virtual monitor for a Deck's VNC client: KDE's krfb-virtualmonitor makes an extra screen and
  * serves it over VNC; WsTcpBridge (plain Java, no Python) turns it into the WebSocket the
  * Deck's VNC app speaks. One monitor at a time; a new request with another size replaces it.
+ * The WebSocket listens on the API's Deck-facing address (loopback when none is set) and needs
+ * the Deck's Bearer token.
  */
 public final class VirtualMonitor {
     public static final int VNC_PORT = 5910, WS_PORT = 5911;
@@ -17,9 +21,21 @@ public final class VirtualMonitor {
     /** krfb writes here: var/log/vmonitor.log next to the server's other logs. */
     private static final File LOG = new File("var/log/vmonitor.log");
 
+    private final Supplier<String> bindAddress;
+    private final Predicate<String> tokenAccepted;
     private Process monitor;
     private WsTcpBridge bridge;
     private String resolution = "", password = "";
+
+    /**
+     * @param bindAddress   the Deck-facing address of the API; the WebSocket listens only there
+     * @param tokenAccepted true for a Bearer token the Deck may use
+     */
+    public VirtualMonitor(Supplier<String> bindAddress, Predicate<String> tokenAccepted) {
+        this.bindAddress = bindAddress;
+        this.tokenAccepted = tokenAccepted;
+        Runtime.getRuntime().addShutdownHook(new Thread(this::stop, "virtual-monitor-stop"));   // never leave it behind
+    }
 
     /** Starts (or keeps) the monitor; the answer has what the VNC app needs to connect. */
     public synchronized Map<String, Object> start(String wanted) {
@@ -29,6 +45,7 @@ public final class VirtualMonitor {
         if (!onPath("krfb-virtualmonitor")) throw new IllegalStateException("krfb-virtualmonitor is not installed");
         password = randomPassword();
         resolution = res;
+        String bind = bridgeBind();
         Map<String, Integer> before = screenPriorities();   // KDE reorders them when a screen appears
         try {
             monitor = new ProcessBuilder("krfb-virtualmonitor", "--resolution", res, "--name", "Deck",
@@ -36,13 +53,14 @@ public final class VirtualMonitor {
                     .redirectErrorStream(true).redirectOutput(ProcessBuilder.Redirect.appendTo(LOG)).start();
             // WebSocket -> VNC in Java, frames of 8 KB at most (the ESP32 WebSocket library drops
             // frames over about 15 KB; with 64 KB frames the Deck disconnected on the first picture).
-            bridge = new WsTcpBridge(WS_PORT, "127.0.0.1", VNC_PORT);
+            bridge = new WsTcpBridge(WS_PORT, bind, "127.0.0.1", VNC_PORT, tokenAccepted);
         } catch (Exception e) {
             stop();
             throw new IllegalStateException("cannot start the virtual monitor: " + e.getMessage());
         }
         // Answer only when both ports accept connections, or the Deck connects too early.
-        if (!listening(VNC_PORT, 5000) || !listening(WS_PORT, 3000)) {
+        String probe = "0.0.0.0".equals(bind) ? "127.0.0.1" : bind;
+        if (!listening("127.0.0.1", VNC_PORT, 5000) || !listening(probe, WS_PORT, 3000)) {
             stop();
             throw new IllegalStateException("the virtual monitor did not start listening");
         }
@@ -98,21 +116,23 @@ public final class VirtualMonitor {
         }
     }
 
-    private static boolean listening(int port, long ms) {
+    /** The WebSocket's address: the API's Deck-facing address, loopback when none is set. */
+    private String bridgeBind() {
+        String bind = bindAddress.get();
+        return bind == null || bind.isBlank() ? "127.0.0.1" : bind;
+    }
+
+    private static boolean listening(String host, int port, long ms) {
         long end = System.currentTimeMillis() + ms;
         while (System.currentTimeMillis() < end) {
             try (java.net.Socket s = new java.net.Socket()) {
-                s.connect(new java.net.InetSocketAddress("127.0.0.1", port), 200);
+                s.connect(new java.net.InetSocketAddress(host, port), 200);
                 return true;
             } catch (java.io.IOException e) {
                 try { Thread.sleep(100); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); return false; }
             }
         }
         return false;
-    }
-
-    public VirtualMonitor() {
-        Runtime.getRuntime().addShutdownHook(new Thread(this::stop, "virtual-monitor-stop"));   // never leave it behind
     }
 
     public synchronized Map<String, Object> stop() {

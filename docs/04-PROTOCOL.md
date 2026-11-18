@@ -46,6 +46,8 @@ is skipped, anything else starts a frame. A `0x00` inside a text line ends it as
 **Over Wi-Fi**: `POST /api/deck` with the Deck's token (`Authorization: Bearer`), the body
 `application/octet-stream`: the Deck's frames one after another, each COBS-encoded and
 ended by `0x00`, as on the serial line. The answer is the server's frames, the same way.
+A text client (the Deck's JavaScript, `decknet.js`) sends the same bytes base64-encoded as
+`text/plain`; the server answers in base64 text too (`RequestGuard.java`, `Router.java`).
 
 **Discovery** (UDP broadcast, port 8080): one frame, not COBS-encoded (a datagram has its own
 end): `discover` from the Deck, `host_here` from each server.
@@ -91,6 +93,10 @@ the server, checked against the same vectors on both sides.
 | 0x16 | `upload_data` | `u16` upload id, `str` Deck id, `u32` offset, the bytes to the end of the payload (1024 at most) |
 | 0x17 | `console_output` | `str` Deck id, `u16` request id (0: a live log line), `u8` flags (bit 0: the last part of the answer), `str16` text: the console's answer (`02-FIRMWARE-KRYONOS.md`) |
 | 0x3F | `error` | `u8` code, `str` detail |
+
+`hello`'s firmware version is the image's own string: on USB the kernel sends `DeckOta::version()`
+(from `DECKFW:` in the image, `kryon-0.8-<build>`). The Deck app's Wi-Fi hello sends its own constant
+`0.8.0` (`deck/main.js`). The `0.7.0` in `server/pom.xml` is the Java host's version: a different thing.
 
 `board`: `str` Deck id, `str` board name, `str` firmware, `str` chip, `u8` chip revision,
 `u8` cores, `u16` MHz, `u32` flash bytes, `u32` flash the image was built for, `u32` PSRAM

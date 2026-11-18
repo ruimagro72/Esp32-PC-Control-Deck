@@ -7,6 +7,7 @@ import dev.controldeck.host.http.HttpError;
 import dev.controldeck.host.http.Request;
 import dev.controldeck.host.protocol.Codec4;
 import dev.controldeck.host.protocol.Frame4;
+import dev.controldeck.host.protocol.Wire;
 import dev.controldeck.host.transport.serial.LineSplitter;
 import dev.controldeck.host.http.Response;
 import dev.controldeck.host.http.Router;
@@ -38,6 +39,9 @@ final class IntegrationTests {
 
     static void run(Runner r) {
         authRules(r);
+        deckTokenRules(r);
+        vncBridgeRules(r);
+        historyInventoryRules(r);
         routerRules(r);
         samplerLive(r);
         historySeries(r);
@@ -108,6 +112,102 @@ final class IntegrationTests {
             check(!stored.contains(other) && stored.contains(ConfigService.sha256Hex(other)),
                     "only the hash of a Deck token is stored");
         });
+    }
+
+    private static void deckTokenRules(Runner r) {
+        r.test("a Deck's token speaks only for its own Deck; the shared token and loopback name any", () -> {
+            Services services = services(Files.createTempDirectory("cd-auth-owner"));
+            services.config().setWifiSettings(Map.of("enabled", true, "bind", "0.0.0.0"));
+            String mine = services.config().issueDeckToken("84C7BB78E0C0");
+            String shared = services.config().rotateWifiToken();
+
+            Request asDeck = request("POST", "/api/deck", "10.0.0.5", Map.of("Authorization", "Bearer " + mine), "");
+            services.auth().authorize(asDeck);
+            services.auth().requireOwnDeck(asDeck, "84C7BB78E0C0");
+            services.auth().requireOwnDeck(asDeck, null);
+            expectStatus(403, () -> services.auth().requireOwnDeck(asDeck, "A1B2C3D4E5F6"));
+
+            Request asShared = request("POST", "/api/deck", "10.0.0.6", Map.of("Authorization", "Bearer " + shared), "");
+            services.auth().authorize(asShared);
+            services.auth().requireOwnDeck(asShared, "A1B2C3D4E5F6");
+            services.auth().requireOwnDeck(request("POST", "/api/deck", "127.0.0.1", Map.of(), ""), "A1B2C3D4E5F6");
+
+            check(services.auth().acceptsToken(mine) && services.auth().acceptsToken(shared), "both tokens accepted");
+            check(!services.auth().acceptsToken("wrong") && !services.auth().acceptsToken(null), "other tokens refused");
+        });
+        r.test("router: a Deck's frames that name another Deck are refused before any frame acts", () -> {
+            Services services = services(Files.createTempDirectory("cd-deck-owner"));
+            services.config().setWifiSettings(Map.of("enabled", true, "bind", "0.0.0.0"));
+            String mine = services.config().issueDeckToken("84C7BB78E0C0");
+            Router router = new Router(services, false);
+            Map<String, String> auth = Map.of("Authorization", "Bearer " + mine);
+
+            byte[] stats = frame(Codec4.STATS_REQUEST, new Wire.Writer().str("A1B2C3D4E5F6").toBytes());
+            equal(403, router.handle(new Request("POST", "/api/deck", Map.of(), auth, "", "10.0.0.5", stats)).status(),
+                    "a Deck token cannot speak for another Deck");
+            byte[] own = frame(Codec4.STATS_REQUEST, new Wire.Writer().str("84C7BB78E0C0").toBytes());
+            equal(200, router.handle(new Request("POST", "/api/deck", Map.of(), auth, "", "10.0.0.5", own)).status(),
+                    "its own Deck is answered");
+        });
+    }
+
+    /** The VNC WebSocket bridge: refused without the Deck's token, loopback included. */
+    private static void vncBridgeRules(Runner r) {
+        r.test("VNC bridge: the upgrade needs the Deck's Bearer token, loopback included", () -> {
+            Services services = services(Files.createTempDirectory("cd-vnc-auth"));
+            services.config().setWifiSettings(Map.of("enabled", true, "bind", "127.0.0.1"));
+            String token = services.config().issueDeckToken("84C7BB78E0C0");
+            int free;
+            try (java.net.ServerSocket probe = new java.net.ServerSocket(0)) {
+                free = probe.getLocalPort();
+            }
+            try (java.net.ServerSocket target = new java.net.ServerSocket(0);
+                 dev.controldeck.host.display.WsTcpBridge bridge = new dev.controldeck.host.display.WsTcpBridge(
+                         free, "127.0.0.1", "127.0.0.1", target.getLocalPort(), services.auth()::acceptsToken)) {
+                String none = upgrade(free, null);
+                check(none != null && none.startsWith("HTTP/1.1 401"), "no token: 401, got " + none);
+                String wrong = upgrade(free, "Bearer not-a-token");
+                check(wrong != null && wrong.startsWith("HTTP/1.1 401"), "wrong token: 401, got " + wrong);
+                String basic = upgrade(free, "Basic " + token);
+                check(basic != null && basic.startsWith("HTTP/1.1 401"), "not a Bearer header: 401, got " + basic);
+                equal("HTTP/1.1 101 Switching Protocols", upgrade(free, "Bearer " + token), "the Deck's token opens it");
+            }
+        });
+    }
+
+    /** The Deck's history (0x07) and inventory (0x08) requests get their answer frames (0x45, 0x44). */
+    private static void historyInventoryRules(Runner r) {
+        r.test("history_request 0x07 and inventory_request 0x08 are answered over /api/deck", () -> {
+            Services services = services(Files.createTempDirectory("cd-hist-inv"));
+            Router router = new Router(services, false);
+            byte[] history = frame(Codec4.HISTORY_REQUEST, new Wire.Writer().str("cpu_usage").u8(5).u16(20).toBytes());
+            Response answer = router.handle(new Request("POST", "/api/deck", Map.of(), Map.of(), "", "127.0.0.1", history));
+            equal(200, answer.status(), "history status");
+            equal(List.of(Codec4.HISTORY), answerTypes((byte[]) answer.body()), "history is answered with 0x45");
+
+            byte[] inventory = frame(Codec4.INVENTORY_REQUEST, new Wire.Writer().u8(0).toBytes());
+            Response listed = router.handle(new Request("POST", "/api/deck", Map.of(), Map.of(), "", "127.0.0.1", inventory));
+            equal(200, listed.status(), "inventory status");
+            equal(List.of(Codec4.INVENTORY), answerTypes((byte[]) listed.body()), "inventory is answered with 0x44");
+        });
+    }
+
+    /** One protocol 4 frame in a /api/deck body. */
+    private static byte[] frame(int type, byte[] payload) {
+        return Frame4.encodeForLine(type, 0, 0, payload);
+    }
+
+    /** Sends an upgrade request and returns the status line the bridge answers (null when none). */
+    private static String upgrade(int port, String authorization) throws java.io.IOException {
+        try (java.net.Socket socket = new java.net.Socket("127.0.0.1", port)) {
+            socket.setSoTimeout(3000);
+            String auth = authorization == null ? "" : "Authorization: " + authorization + "\r\n";
+            socket.getOutputStream().write(("GET / HTTP/1.1\r\nHost: 127.0.0.1\r\nUpgrade: websocket\r\n"
+                    + "Connection: Upgrade\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n"
+                    + "Sec-WebSocket-Version: 13\r\n" + auth + "\r\n").getBytes(StandardCharsets.US_ASCII));
+            return new java.io.BufferedReader(new java.io.InputStreamReader(socket.getInputStream(),
+                    StandardCharsets.US_ASCII)).readLine();
+        }
     }
 
     private static void routerRules(Runner r) {

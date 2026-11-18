@@ -60,19 +60,54 @@ public final class PeerAuth {
             recordFailure(request.remoteAddress());
             throw HttpError.unauthorized("Missing bearer token");
         }
-        byte[] presented = ConfigService.sha256Hex(token).getBytes(StandardCharsets.UTF_8);
-        List<String> accepted = new ArrayList<>(wifi.deckTokenHashes());
-        if (wifi.tokenHash() != null && !wifi.tokenHash().isEmpty()) {
-            accepted.add(wifi.tokenHash());
-        }
-        boolean match = false;
-        for (String hash : accepted) {  // every hash is compared: no early exit
-            match |= MessageDigest.isEqual(presented, hash.getBytes(StandardCharsets.UTF_8));
-        }
-        if (!match) {
+        if (ownerOf(token) == null) {
             recordFailure(request.remoteAddress());
             throw HttpError.unauthorized("Invalid bearer token");
         }
+    }
+
+    /**
+     * A Deck's own token speaks only for that Deck. Frames that name a Deck (its "deck" or "id")
+     * are refused when the presented token belongs to another one. The shared token and loopback
+     * peers name any Deck. Call after {@link #authorize}, which has already checked the token.
+     */
+    public void requireOwnDeck(Request request, String deckId) {
+        if (request.isLoopback() || deckId == null) {
+            return;
+        }
+        String owner = ownerOf(request.bearerToken());
+        if (owner != null && !owner.isEmpty() && !owner.equals(deckId)) {
+            throw HttpError.forbidden("This token belongs to another Deck");
+        }
+    }
+
+    /** True for the shared token and for any Deck's token: the VNC bridge uses it. */
+    public boolean acceptsToken(String token) {
+        return ownerOf(token) != null;
+    }
+
+    /**
+     * The Deck id a token belongs to: "" for the shared token, null when no token matches.
+     * Every hash is compared, with no early exit.
+     */
+    private String ownerOf(String token) {
+        if (token == null) {
+            return null;
+        }
+        ConfigService.WifiSettings wifi = config.getWifiSettings();
+        byte[] presented = ConfigService.sha256Hex(token).getBytes(StandardCharsets.UTF_8);
+        String owner = null;
+        if (wifi.tokenHash() != null && !wifi.tokenHash().isEmpty()
+                && MessageDigest.isEqual(presented, wifi.tokenHash().getBytes(StandardCharsets.UTF_8))) {
+            owner = "";
+        }
+        for (Map.Entry<String, String> deck : config.deckTokenHashes().entrySet()) {
+            boolean same = MessageDigest.isEqual(presented, deck.getValue().getBytes(StandardCharsets.UTF_8));
+            if (same && owner == null) {
+                owner = deck.getKey();
+            }
+        }
+        return owner;
     }
 
     private void assertNotThrottled(String address) {

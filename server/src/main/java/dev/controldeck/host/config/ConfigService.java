@@ -353,6 +353,20 @@ public final class ConfigService {
                 List.copyOf(deckHashes));
     }
 
+    /** Deck id -> token hash, one entry per Deck token handed over USB. Internal use. */
+    public Map<String, String> deckTokenHashes() {
+        Map<String, Object> wifi = sectionOf(section(load(), "transports"), "wifi");
+        Map<String, String> owners = new LinkedHashMap<>();
+        if (wifi.get("deck_tokens") instanceof Map<?, ?> decks) {
+            for (Map.Entry<?, ?> entry : decks.entrySet()) {
+                if (entry.getKey() instanceof String id && entry.getValue() instanceof String hash && !hash.isEmpty()) {
+                    owners.put(id, hash);
+                }
+            }
+        }
+        return owners;
+    }
+
     /** Full transport section including the token hash. Internal use. */
     public Map<String, Object> getTransportSettings() {
         return section(load(), "transports");

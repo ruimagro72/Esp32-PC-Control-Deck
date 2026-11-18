@@ -52,11 +52,24 @@ public final class Router {
     }
 
     private final Services services;
-    private final dev.controldeck.host.display.VirtualMonitor vmonitor = new dev.controldeck.host.display.VirtualMonitor();
+    private final dev.controldeck.host.display.VirtualMonitor vmonitor;
+    private final boolean countLoopbackPeers;
     private final List<Route> routes;
 
     public Router(Services services) {
+        this(services, "1".equals(System.getenv("CONTROL_DECK_COUNT_LOOPBACK_PEERS")));
+    }
+
+    /**
+     * @param countLoopbackPeers true counts a loopback peer as a Wi-Fi peer (the emulator's traffic
+     *                           is loopback): test runs only, production keeps false
+     */
+    public Router(Services services, boolean countLoopbackPeers) {
         this.services = services;
+        this.countLoopbackPeers = countLoopbackPeers;
+        this.vmonitor = new dev.controldeck.host.display.VirtualMonitor(
+                () -> services.config().getWifiSettings().bind(),
+                token -> services.auth().acceptsToken(token));
         this.routes = buildRoutes();
     }
 
@@ -116,8 +129,10 @@ public final class Router {
                     throw refused;
                 }
             }
-            if (!request.isLoopback()) {
+            if (countLoopbackPeers || !request.isLoopback()) {
                 services.transports().touchWifiPeer(request.remoteAddress());
+            }
+            if (!request.isLoopback()) {
                 wifiLog(request.remoteAddress(), true, "[wifi] Peer " + request.remoteAddress() + " connected");
             }
         }
@@ -585,6 +600,7 @@ public final class Router {
         int frames = 0;
         int sequence = 0;
         String deckId = null;  // who asks: the console lines waiting for it travel in this answer
+        List<Map<String, Object>> decoded = new java.util.ArrayList<>();
         for (LineSplitter.Item item : splitter.feed(body, body.length)) {
             if (!(item instanceof LineSplitter.Frame frame)) {
                 continue;
@@ -592,7 +608,16 @@ public final class Router {
             if (++frames > DECK_FRAMES_PER_REQUEST) {
                 throw HttpError.badRequest("At most " + DECK_FRAMES_PER_REQUEST + " frames per request");
             }
-            Map<String, Object> message = Codec4.decode(frame.frame());
+            decoded.add(Codec4.decode(frame.frame()));
+        }
+        if (frames == 0) {
+            throw HttpError.badRequest("The body holds no protocol 4 frame");
+        }
+        // A Deck's own token is refused for the whole request, before any frame acts.
+        for (Map<String, Object> message : decoded) {
+            services.auth().requireOwnDeck(request, deckOf(message));
+        }
+        for (Map<String, Object> message : decoded) {
             String sender = deckOf(message);
             deckId = sender != null ? sender : deckId;
             if (message != null && "console_output".equals(message.get("type"))) {
@@ -609,9 +634,6 @@ public final class Router {
                     answer.writeBytes(Frame4.encodeForLine(out.type(), 0, sequence++, out.payload()));
                 }
             }
-        }
-        if (frames == 0) {
-            throw HttpError.badRequest("The body holds no protocol 4 frame");
         }
         if (deckId != null) {
             for (Map<String, Object> input : handler.console().take(deckId)) {
