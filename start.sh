@@ -5,7 +5,7 @@
 #   ./start.sh server [run|build|selftest|console|list-ports|setup|stop|status|clean|openaction-install]
 #   ./start.sh emu [info|merge|build-host|build-launcher|build-mockup|build|run|bootlog|ui|cosim|console|shot|launcher|mockup|test]
 #   ./start.sh launcher [build|run|test|mockup-build|mockup-run]
-#   ./start.sh card [stage|deploy <mount>|image|extract|ls]
+#   ./start.sh card [stage|deploy <mount>|image|sync|extract|ls]
 #   ./start.sh test [all|server|native|emu|launcher|extensive|wifi|ble|store]
 #   ./start.sh scan
 #   ./start.sh export [--dry-run]
@@ -358,6 +358,27 @@ card_need_mtools() {
     done
 }
 
+# card_build_image DIR IMG MB: writes a fresh FAT32 image of DIR, replacing IMG (no output).
+card_build_image() {
+    local dir="$1" img="$2" mb="$3"
+    case "$mb" in ''|*[!0-9]*) die "card image: SIZE_MB must be a number" ;; esac
+    [ "$mb" -ge 64 ] || die "card image: FAT32 needs at least 64 MB (got $mb)"
+    mkdir -p "$(dirname "$img")"
+    rm -f "$img"
+    truncate -s "${mb}M" "$img"
+    mformat -i "$img" -F :: || die "card image: mformat failed"
+    card_put "$img" "$dir" || die "card image: copying $dir failed"
+}
+
+# card_put IMG DIR [-o]: copies the entries of DIR (recursively, mtimes kept) into the root of IMG.
+# -o overwrites files already on the image; nothing is copied from an empty DIR.
+card_put() {
+    local img="$1" dir="$2" flag="${3:-}" items=() e
+    while IFS= read -r -d '' e; do items+=("$e"); done < <(find "$dir" -mindepth 1 -maxdepth 1 -print0)
+    if [ ${#items[@]} -eq 0 ]; then return 0; fi
+    mcopy -s -m -Q $flag -i "$img" "${items[@]}" ::
+}
+
 # card_image [--force] [DIR] [IMG] [SIZE_MB]: FAT32 image of DIR (default simulator/SD_Card).
 card_image() {
     local force=0
@@ -365,16 +386,10 @@ card_image() {
     local dir="${1:-$SIM_CARD}" img="${2:-$SIM_CARD_IMG}" mb="${3:-128}"
     card_need_mtools
     [ -d "$dir" ] || die "card image: folder not found: $dir"
-    case "$mb" in ''|*[!0-9]*) die "card image: SIZE_MB must be a number" ;; esac
-    [ "$mb" -ge 64 ] || die "card image: FAT32 needs at least 64 MB (got $mb)"
     if [ -e "$img" ] && [ "$force" -ne 1 ]; then
         die "card image: $img exists (the card keeps what the firmware wrote). Back it up and pass --force to replace it."
     fi
-    mkdir -p "$(dirname "$img")"
-    rm -f "$img"
-    truncate -s "${mb}M" "$img"
-    mformat -i "$img" -F :: || die "card image: mformat failed"
-    ( cd "$dir" && mcopy -s -m -Q -i "$img" ./* :: ) || die "card image: copying $dir failed"
+    card_build_image "$dir" "$img" "$mb"
     echo "card image: $img (${mb} MB FAT32) from $dir: $(mdir -s -i "$img" :: 2>/dev/null | tail -2 | head -1 | sed 's/^ *//')"
 }
 
@@ -401,6 +416,57 @@ card_ls() {
     mdir -i "$img" "::$path"
 }
 
+# card_sync [--keep] DIR IMG [SIZE_MB]: makes IMG the card of the folder DIR (the profile's storage.sd_dir).
+# Default: rebuilds IMG from DIR, so DIR is the source of truth and deleted files disappear.
+# --keep: copies only the new or newer files of DIR over IMG; what the firmware wrote stays.
+# A missing IMG is built as card image does (default 128 MB). Per-device secret files are never copied.
+card_sync() {
+    local keep=0
+    if [ "${1:-}" = "--keep" ]; then keep=1; shift; fi
+    local dir="${1:?card sync: DIR (folder of the card)}" img="${2:?card sync: IMG (card image)}" mb="${3:-}"
+    card_need_mtools
+    dir="${dir%/}"
+    [ -d "$dir" ] || die "card sync: not a directory: $dir"
+    local work stage ext="" f d rel n=0 skipped="" existing=0
+    work="$(mktemp -d)" || die "card sync: mktemp failed"
+    trap 'rm -rf -- "$work"; trap - RETURN' RETURN
+    stage="$work/stage"
+    mkdir -p "$stage"
+    if [ -f "$img" ]; then existing=1; fi
+    if [ "$existing" -eq 1 ] && [ "$keep" -eq 1 ]; then
+        ext="$work/ext"
+        mkdir -p "$ext"
+        mcopy -s -m -n -Q -i "$img" :: "$ext" || die "card sync: reading $img failed"
+    fi
+    if [ "$existing" -eq 0 ] || [ "$keep" -eq 0 ]; then
+        # Full stage: every folder and every file that is not a per-device secret.
+        while IFS= read -r -d '' d; do mkdir -p -- "$stage/${d#"$dir"/}"; done < <(find "$dir" -mindepth 1 -type d -print0)
+    fi
+    while IFS= read -r -d '' f; do
+        if is_secret_file "$f"; then
+            skipped="${skipped:+$skipped, }${f#"$dir"/}"
+            continue
+        fi
+        rel="${f#"$dir"/}"
+        if [ -n "$ext" ] && [ -e "$ext/$rel" ] && [ "$(stat -c %Y "$f")" -le $(( $(stat -c %Y "$ext/$rel") + 1 )) ]; then
+            continue
+        fi
+        mkdir -p -- "$stage/$(dirname -- "$rel")"
+        cp -p -- "$f" "$stage/$rel" || die "card sync: copy failed: $rel"
+        n=$((n + 1))
+    done < <(find "$dir" -type f -print0)
+    if [ "$existing" -eq 0 ]; then
+        card_build_image "$stage" "$img" "${mb:-128}"
+    elif [ "$keep" -eq 0 ]; then
+        card_build_image "$stage" "$work/new.img" "${mb:-$(( $(stat -c %s "$img") / 1048576 ))}"
+        mv -f -- "$work/new.img" "$img" || die "card sync: replacing $img failed"
+    else
+        card_put "$img" "$stage" -o || die "card sync: copying into $img failed"
+    fi
+    [ -z "$skipped" ] || echo "card sync: skipped per-device files (not copied): $skipped"
+    echo "card sync: $dir -> $img ($n files)"
+}
+
 card_cmd() {
     local cmd="${1:-help}"
     [ $# -gt 0 ] && shift
@@ -412,6 +478,7 @@ card_cmd() {
             ;;
         deploy) card_deploy "$@" ;;
         image) card_image "$@" ;;
+        sync) card_sync "$@" ;;
         extract) card_extract "$@" ;;
         ls) card_ls "$@" ;;
         help|-h|--help)
@@ -420,11 +487,13 @@ usage: ./start.sh card [command]
   stage             show info for the defined SD card (simulator/SD_Card); no staging generated
   deploy <mount>    copy simulator/SD_Card to the mounted card
   image [--force] [DIR] [IMG] [MB]   build a FAT32 image from DIR (default simulator/SD_Card -> emu/storage/sd.img, 128 MB)
+  sync [--keep] DIR [IMG] [MB]   make IMG the card of folder DIR (default: rebuild IMG from DIR, a missing IMG is built;
+                    --keep copies only new or newer files over IMG, what the firmware wrote stays)
   extract [--force] [IMG] [DIR]    unpack an image to a folder (default emu/storage/sd-extract)
   ls [IMG] [PATH]   list a folder inside the image
 EOF
             ;;
-        *) die "unknown card command '$cmd' (stage, deploy, image, extract, ls)" ;;
+        *) die "unknown card command '$cmd' (stage, deploy, image, sync, extract, ls)" ;;
     esac
 }
 
@@ -442,8 +511,10 @@ test_native() {
     sim_ensure_card
     mkdir -p "$hostlocal"
     if [ $# -eq 0 ]; then
-        set -- "$FW"/apps/*/main.js "$FW/apps/KryonOS-AppStore/categories/Hardware/led_controller/main.js" \
-               "$FW/apps/test/com.kryonos.musicplayer/main.js" "$FW/apps/test/com.kryonos.piano/main.js" "$FW/apps/shell/shell.js"
+        set -- "$FW"/apps/*/main.js "$FW"/apps/KryonOS-AppStore/categories/*/*/main.js \
+               "$FW/apps/test/com.kryonos.musicplayer/main.js" "$FW/apps/test/com.kryonos.piano/main.js" \
+               "$FW/apps/test/com.kryonos.filemanager/main.js" "$FW/apps/test/com.kryonos.blekeyboard/main.js" \
+               "$FW/apps/test/com.kryonos.imageviewer/main.js" "$FW/apps/shell/shell.js"
     fi
     local pass=0 fail=0
     for app in "$@"; do
@@ -458,7 +529,7 @@ test_native() {
         else host_appdir="/sd/UserApps/$d"; fi
         for script in tap hold-corner; do
             rm -rf "$hostsd" && cp -r "$SIM_CARD" "$hostsd"
-            out="$(HOST_APPDIR="$host_appdir" HOST_SD="$hostsd" HOST_LOCAL="$hostlocal" timeout 20 "$b/host" "$b/prelude.all.js" "$app" 300 "$script" 2>&1)"; rc=$?
+            rc=0; out="$(HOST_APPDIR="$host_appdir" HOST_SD="$hostsd" HOST_LOCAL="$hostlocal" timeout 20 "$b/host" "$b/prelude.all.js" "$app" 300 "$script" 2>&1)" || rc=$?
             if [ $rc -eq 0 ]; then pass=$((pass+1)); echo "PASS $name [$script]"; else fail=$((fail+1)); echo "FAIL $name [$script]"; echo "$out" | sed 's/^/    /' | head -8; fi
         done
     done
@@ -596,7 +667,7 @@ export_branches_for() {
         docs/upstream/D-deck-layer/*|docs/firmware/OTA.md|docs/firmware/UI_FROM_SERVER.md) echo "deck" ;;
         docs/simulator/*|simulator/*) echo "simulator" ;;
         firmware/apps/deck/*|firmware/apps/decklink/*|firmware/apps/deckshell/*|firmware/apps/shell/*) echo "deck" ;;
-        firmware/apps/bluetooth/*|firmware/apps/vnc/*|firmware/apps/lib/decknet.js) echo "deck" ;;
+        firmware/apps/bluetooth/*|firmware/apps/vnc/*) echo "deck" ;;
         firmware/tools/Send.java|firmware/tools/deck-monitor.sh|firmware/tools/vnc-bridge.sh) echo "deck" ;;
         firmware/*) ;;
         *) ;;
@@ -1335,10 +1406,11 @@ emu_argv_has() {
 }
 
 # emu_profile_load SPEC: sets EMU_PROF_NO_SD (0/1), EMU_PROF_SD_IMG ("" = default card image),
+# EMU_PROF_SD_DIR (storage.sd_dir, absolute; "" = unset: the card folder synced by emu_profile_sync_sd),
 # EMU_PROF_NET, EMU_PROF_WIFI_SSID, EMU_PROF_WIFI_AUTH, EMU_PROF_BLE_HCI, EMU_PROF_AUDIO_OUT,
 # EMU_PROF_AUDIO_IN (repo-relative paths made absolute; "" = unset), EMU_PROF_INSTANCE ("" = not set).
 emu_profile_load() {
-    local spec="$1" file schema sd_enabled sd_path sd_abs net wifi_on ssid auth ble_on hci aout ain inst
+    local spec="$1" file schema sd_enabled sd_path sd_dir sd_abs net wifi_on ssid auth ble_on hci aout ain inst
     command -v jq >/dev/null 2>&1 || die "emu --profile needs jq (not found in PATH; install jq)"
     if [[ "$spec" == */* || "$spec" == *.json ]]; then file="$spec"; else file="$EMU_PROFILE_DIR/$spec.json"; fi
     if [[ "$file" != /* && ! -f "$file" && -f "$ROOT/$file" ]]; then file="$ROOT/$file"; fi
@@ -1349,6 +1421,7 @@ emu_profile_load() {
         || die "emu profile $file: schema_version is '$schema', expected simulator.profile/v1"
     sd_enabled="$(jq -r 'if .storage.sd_enabled == false then "0" else "1" end' "$file")"
     sd_path="$(jq -r '.storage.sd_image_path // ""' "$file")"
+    sd_dir="$(jq -r '.storage.sd_dir // ""' "$file")"
     net="$(jq -r '.network_radio.net_mode // ""' "$file")"
     wifi_on="$(jq -r '.network_radio.wifi.enabled // false' "$file")"
     ssid="$(jq -r '.network_radio.wifi.ssid // ""' "$file")"
@@ -1375,9 +1448,15 @@ emu_profile_load() {
         [[ "$sd_path" == /* ]] || sd_path="$ROOT/$sd_path"
         sd_abs="$(readlink -m "$sd_path")"
         if [[ "$sd_abs" != "$(readlink -m "$SIM_CARD_IMG")" ]]; then
-            [ -f "$sd_abs" ] || die "emu profile $file: sd_image_path not found: $sd_abs (./start.sh card image)"
+            # With sd_dir the image is built by the sync before the run, so it may not exist yet.
+            [ -f "$sd_abs" ] || [[ -n "$sd_dir" ]] || die "emu profile $file: sd_image_path not found: $sd_abs (./start.sh card image)"
             EMU_PROF_SD_IMG="$sd_abs"
         fi
+    fi
+    EMU_PROF_SD_DIR=""
+    if [[ -n "$sd_dir" ]]; then
+        [[ "$sd_dir" == /* ]] || sd_dir="$ROOT/$sd_dir"
+        EMU_PROF_SD_DIR="$(readlink -m "$sd_dir")"
     fi
 
     EMU_PROF_NET="$net"
@@ -1422,6 +1501,14 @@ emu_profile_esp_args() {
     if [[ -n "$EMU_PROF_AUDIO_IN" ]] && ! emu_argv_has --i2s-wav-in "$@"; then EMU_PROFILE_ARGS+=(--i2s-wav-in "$EMU_PROF_AUDIO_IN"); fi
 }
 
+# emu_profile_sync_sd: when the loaded profile has storage.sd_dir and the card is enabled, rebuilds the
+# profile's card image from that folder before the run (card sync, default mode: the folder wins).
+emu_profile_sync_sd() {
+    [[ -n "$EMU_PROF_SD_DIR" && $EMU_PROF_NO_SD -eq 0 ]] || return 0
+    local img="${EMU_PROF_SD_IMG:-$SIM_CARD_IMG}"
+    card_sync "$EMU_PROF_SD_DIR" "$img"
+}
+
 emu_cmd_run() {
     emu_require_esp
     local inst
@@ -1455,6 +1542,7 @@ emu_cmd_run() {
     done
     if [[ -n "$profile" ]]; then
         emu_profile_load "$profile"
+        emu_profile_sync_sd
         if [[ $EMU_PROF_NO_SD -eq 1 ]]; then no_sd=1; fi
         if [[ -n "$EMU_PROF_SD_IMG" ]]; then card="$EMU_PROF_SD_IMG"; fi
         emu_profile_esp_args "${raw[@]}"
@@ -1539,6 +1627,7 @@ emu_cmd_shot() {
     done
     if [[ -n "$profile" ]]; then
         emu_profile_load "$profile"
+        emu_profile_sync_sd
         if [[ $EMU_PROF_NO_SD -eq 1 ]] && ! emu_argv_has --sd "${raw[@]}"; then sd=""; fi
         if [[ -n "$EMU_PROF_SD_IMG" ]] && ! emu_argv_has --sd "${raw[@]}"; then sd="$EMU_PROF_SD_IMG"; fi
         emu_profile_esp_args "${raw[@]}"
@@ -1632,6 +1721,7 @@ emu_cmd_ui() {
     done
     if [[ -n "$profile" ]]; then
         emu_profile_load "$profile"
+        emu_profile_sync_sd
         if [[ $EMU_PROF_NO_SD -eq 1 ]]; then no_sd=1; fi
         if [[ -n "$EMU_PROF_SD_IMG" ]]; then card="$EMU_PROF_SD_IMG"; fi
         emu_profile_esp_args "${raw[@]}"

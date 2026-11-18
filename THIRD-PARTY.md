@@ -12,7 +12,7 @@ The project's own code (firmware layer, server) has no restrictions. The simulat
 | minimp3 | `firmware/src/Hal/Audio/minimp3.h` | CC0 1.0 (public domain dedication) | Header; [lieff/minimp3](https://github.com/lieff/minimp3). |
 | TFT_Touch, adapted to FT6336G | `firmware/lib/TFT_Touch/` | To confirm | Adapted from the LCDWiki ES3C28P / ESP32-32E demo package (`Install libraries/TFT_Touch`). `library.properties` names Bodmer as original author. The folder has no licence file. |
 | LCDWiki ES3C28P demo code (base for the board port) | `docs/upstream/A-board-es3c28p/` (patch 0001 includes the vendor touch library) | To confirm | Board vendor package; no licence text in the repository. |
-| `decknet.js` (Deck protocol 4 in JavaScript) | `firmware/apps/lib/decknet.js` | Owner's own code, no restrictions | Project code. The header has no licence line. |
+| `decknet.js` (Deck protocol 4 in JavaScript) | `firmware/apps/deck/decknet.js` | Owner's own code, no restrictions | Project code. The header has no licence line. |
 | Simulator launcher and SD-card tools | `simulator/` | Simulator: "Free for the KryonOS team. Other use by consultation. Contact via the repository." | Project code. Built against GTK3 and SDL2 through pkg-config (system libraries, not redistributed; their licences to confirm). |
 | Server BLE bridge | `server/ble-bridge/` | Owner's own code, no restrictions | Project code. Links dynamically to libsystemd (sd-bus), LGPL-2.1, from the system (not redistributed). |
 | KryonOS v3.0.0 prebuilt images | `simulator/emu/firmware/kryonos-v3/` | GPL-3.0 (upstream release) | Release assets of KryonOS v3.0.0, see `simulator/emu/firmware/manifest.json`. Release binaries are not built from source here. |
