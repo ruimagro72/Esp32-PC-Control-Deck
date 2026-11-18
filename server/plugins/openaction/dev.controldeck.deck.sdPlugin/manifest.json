@@ -1,0 +1,14 @@
+{
+	"Name": "Control Deck",
+	"Description": "ESP32 Control Decks as devices",
+	"Author": "ESP32 PC Control Deck",
+	"Version": "0.1.0",
+	"Icon": "icon",
+	"Category": "Control Deck",
+	"CodePathLin": "run.sh",
+	"DeviceNamespace": "cd",
+	"Actions": [],
+	"OS": [{"Platform": "linux", "MinimumVersion": "0"}],
+	"SDKVersion": 2,
+	"Software": {"MinimumVersion": "6.0"}
+}

@@ -1,0 +1,13 @@
+# Build output
+server/target/
+server/ble-bridge/build/
+
+# Runtime data: database, logs, sampling state
+server/var/
+var/
+
+# Secrets: OTA signing private key, tokens, environment files
+*.pk8
+keys/
+.env
+*.db
