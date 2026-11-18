@@ -12,7 +12,7 @@ ESP32 PC Control Deck is intentionally local-first:
 - Wi-Fi is optional, off by default, and the API listens on `127.0.0.1` unless you change it,
 - BLE is optional; only PCs paired with the Deck (a code shown on its screen) can talk to it, and the bond is the access (`04-PROTOCOL.md`, "BLE"),
 - no cloud service is required by the host,
-- the Deck stores its Wi-Fi passwords and the host token in its flash (NVS), which is not encrypted unless flash encryption is enabled (see `docs/02-FIRMWARE-KRYONOS.md` in the `kryonos` branch).
+- the Deck stores its Wi-Fi passwords and the host token in its flash (NVS), which is not encrypted unless flash encryption is enabled (see `docs/02-FIRMWARE-KRYONOS.md` in the KryonOS fork, branch `es3c28p-support`).
 
 ## Action execution
 

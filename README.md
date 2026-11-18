@@ -1,7 +1,7 @@
 # ESP32 PC Control Deck: server branch
 
-The Java host that runs on the PC and talks to the Deck, the device with the 2.8 inch screen. It is one of four branches:
-`kryonos` (firmware base), `deck` (the Deck app on the board), `server` (this branch) and `simulator` (a PC emulator).
+The Java host that runs on the PC and talks to the Deck, the device with the 2.8 inch screen. The other parts are the
+KryonOS fork (`es3c28p-support`, the firmware base), `deck` (the Deck app on the board) and `simulator` (a PC emulator).
 Overview and branch plan: see the `main` branch, `docs/BRANCHES.md`.
 
 Short version:
