@@ -9,7 +9,7 @@ of KryonOS, and the rest is in the branches below.
 
 ## Demo
 
-[![The simulator launcher running KryonOS on the emulated ES3C28P](docs/media/simulator-demo.jpg)](https://github.com/ruimagro72/Esp32-PC-Control-Deck/blob/simulator/docs/simulator/media/simulator-demo.mp4)
+Demo video of the simulator launcher running KryonOS on the emulated ES3C28P: [docs/simulator/media/simulator-demo.mp4](https://github.com/ruimagro72/Esp32-PC-Control-Deck/blob/simulator/docs/simulator/media/simulator-demo.mp4)
 
 Click the picture to open the video (2.5 minutes): the simulator launcher, the hardware profile, KryonOS 3.0.0 booting on the emulated board, and the built-in help.
 
@@ -46,13 +46,13 @@ cd "$DIR" && ./start.sh help
 Root files that several branches have (`README.md`, `CHANGELOG.md`, `THIRD-PARTY.md`, `LICENSE`, `.gitignore`) are
 replaced by the last extraction, so use the branch READMEs for the details of each part.
 
-Checked before the repositories were split (18 Nov 2026), on the assembled tree with the former `kryonos` branch: `./start.sh help`, `./start.sh test help`, `./start.sh test server` (101 passed). `./start.sh test native` needs `simulator/SD_Card`, which is in the `simulator` branch. `./start.sh scan` needs the tree to be a git repository (`git init` in the folder). The assembly above is not yet checked.
+Checked before the repositories were split (18 Nov 2026), on the assembled tree with the former `kryonos` branch: `./start.sh help`, `./start.sh test help`, `./start.sh test server` (110 passed). `./start.sh test native` needs `simulator/SD_Card`, which is in the `simulator` branch. `./start.sh scan` needs the tree to be a git repository (`git init` in the folder). The assembly above is not yet checked.
 
 ## Status
 
 - KryonOS fork: 2.8 inch support works on hardware (13 Nov 2026) and in the emulator (18 Nov 2026).
 - `deck`: works on hardware. The SD layout needs the KryonOS default.
-- `server`: stable with protocol 4. The self-tests were run on 18 Nov 2026 (101 passed).
+- `server`: stable with protocol 4. The self-tests were run on 18 Nov 2026 (110 passed).
 - `simulator`: usable, with limits (no LCD model in esp-emu; BLE scan not confirmed).
 
 ## Honest limits
