@@ -20,6 +20,8 @@ public final class MessageStore {
 
     public static final int MAX_KEPT = 100;
     public static final int MAX_TEXT = 500;
+    /** Bytes of UTF-8 a text may take: one message (from + text) must fit one 2048-byte frame. */
+    public static final int MAX_TEXT_BYTES = 1500;
     public static final int MAX_FROM = 24;
     public static final String ALL = "all";
     /** Messages a Deck leaves for the people at the PC (not shown on any Deck). */
@@ -104,7 +106,7 @@ public final class MessageStore {
         String what = "voice".equals(kind) ? "voice" : "text";
         Message message = new Message(nextId++, System.currentTimeMillis() / 1000L, what,
                 Values.truncateCodePoints(from == null || from.isBlank() ? "server" : from.trim(), MAX_FROM), target,
-                Values.truncateCodePoints(text.trim(), MAX_TEXT), new ArrayList<>());
+                cutBytes(Values.truncateCodePoints(text.trim(), MAX_TEXT), MAX_TEXT_BYTES), new ArrayList<>());
         messages.add(message);
         while (messages.size() > MAX_KEPT) {
             deleteAudio(messages.remove(0).id());
@@ -116,6 +118,9 @@ public final class MessageStore {
     /** A Deck's messages newer than {@code after}, oldest first, at most {@code max}. */
     public synchronized List<Map<String, Object>> forDeck(String deck, long after, int max) {
         List<Map<String, Object>> out = new ArrayList<>();
+        if (!isDeck(deck)) {
+            return out;
+        }
         for (Message m : messages) {
             if (m.id() > after && m.forDeck(deck) && out.size() < max) {
                 Map<String, Object> item = new LinkedHashMap<>();
@@ -133,6 +138,9 @@ public final class MessageStore {
 
     /** A Deck read a message: kept so the other Decks still see theirs unread. */
     public synchronized boolean markRead(String deck, long id) {
+        if (!isDeck(deck)) {
+            return false;
+        }
         for (Message m : messages) {
             if (m.id() == id && m.forDeck(deck)) {
                 String who = deck.toUpperCase();
@@ -144,6 +152,31 @@ public final class MessageStore {
             }
         }
         return false;
+    }
+
+    /** The longest prefix of text, cut at a character, that is at most max UTF-8 bytes. */
+    static String cutBytes(String text, int max) {
+        int bytes = 0;
+        int end = 0;
+        for (int i = 0; i < text.length(); ) {
+            int cp = text.codePointAt(i);
+            bytes += String.valueOf(Character.toChars(cp)).getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
+            if (bytes > max) {
+                break;
+            }
+            i += Character.charCount(cp);
+            end = i;
+        }
+        return text.substring(0, end);
+    }
+
+    /** The Deck id shape the frames use (MessageHandler, Router). "all" and "pc" name no Deck. */
+    private static final java.util.regex.Pattern DECK_ID = java.util.regex.Pattern.compile("^[0-9A-Za-z:_-]{1,32}$");
+
+    /** A Deck id as the frames carry it: malformed, "all" and "pc" are no Deck, so they never read or list. */
+    private static boolean isDeck(String deck) {
+        return deck != null && DECK_ID.matcher(deck).matches() && !ALL.equalsIgnoreCase(deck)
+                && !PC.equalsIgnoreCase(deck);
     }
 
     public synchronized boolean delete(long id) {

@@ -1,5 +1,7 @@
 package dev.controldeck.host.transfer;
 
+import dev.controldeck.host.Defaults;
+
 import java.io.ByteArrayOutputStream;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -12,7 +14,6 @@ import java.util.Map;
 public final class Uploads {
 
     public static final int KIND_VOICE = 2;
-    private static final int MAX_OPEN = 8;
     private static final long FORGET_AFTER_MS = 2 * 60_000L;
 
     /** What a finished upload carries. */
@@ -100,7 +101,7 @@ public final class Uploads {
     private void forgetOld() {
         long now = System.currentTimeMillis();
         open.values().removeIf(u -> now - u.touchedMs > FORGET_AFTER_MS);
-        while (open.size() >= MAX_OPEN) {
+        while (open.size() >= Defaults.MAX_OPEN_TRANSFERS) {
             open.remove(open.keySet().iterator().next());
         }
     }

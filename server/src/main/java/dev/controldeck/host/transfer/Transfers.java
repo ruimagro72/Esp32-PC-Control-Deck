@@ -1,5 +1,6 @@
 package dev.controldeck.host.transfer;
 
+import dev.controldeck.host.Defaults;
 import dev.controldeck.host.firmware.FirmwareStore;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -22,7 +23,6 @@ public final class Transfers {
     public static final int KIND_PACK = 4;
     public static final int BLOCK = 1024;
     public static final int WINDOW = 4;
-    private static final int MAX_OPEN = 8;              // one per Deck in practice
     private static final long FORGET_AFTER_MS = 10 * 60_000L;
 
     private static final class Transfer {
@@ -106,7 +106,7 @@ public final class Transfers {
     private void forgetOld() {
         long now = System.currentTimeMillis();
         open.values().removeIf(t -> now - t.touchedMs > FORGET_AFTER_MS);
-        while (open.size() >= MAX_OPEN) {
+        while (open.size() >= Defaults.MAX_OPEN_TRANSFERS) {   // one per Deck in practice
             open.remove(open.keySet().iterator().next());
         }
     }

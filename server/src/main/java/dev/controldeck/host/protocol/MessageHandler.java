@@ -34,16 +34,22 @@ import java.util.Optional;
  *
  * A {@code macro} event runs the configured macro and answers {@code macro_result}:
  * {@code ok} is true only when the action really ran; otherwise {@code detail} says why.
+ *
+ * The replies are grouped in sibling classes: {@link TelemetryReplies} (stats, history,
+ * inventory), {@link InboxReplies} (messages, voice), {@link BoardRegistry} (the Deck
+ * descriptions). This class dispatches by message type and keeps the transfer, firmware,
+ * Wi-Fi and macro replies.
  */
 public final class MessageHandler {
 
     private final ConfigService config;
     private final Sampler sampler;
-    private final Inventory inventory;
     private final MacroService macros;
     private final OpenActionBridge openAction = new OpenActionBridge();
     // The description each Deck sent ("board" frame), by Deck id, newest last.
-    private final Map<String, Map<String, Object>> boards = new java.util.concurrent.ConcurrentHashMap<>();
+    private final BoardRegistry boards = new BoardRegistry();
+    private final TelemetryReplies telemetry;
+    private final InboxReplies inboxReplies = new InboxReplies(boards);
     // Where the API really listens (--bind / --port win over the settings); null/0 = settings.
     private volatile FirmwareStore firmware;
     private volatile PackStore packs;
@@ -63,7 +69,7 @@ public final class MessageHandler {
     public MessageHandler(ConfigService config, Sampler sampler, Inventory inventory, MacroService macros) {
         this.config = config;
         this.sampler = sampler;
-        this.inventory = inventory;
+        this.telemetry = new TelemetryReplies(sampler, inventory);
         this.macros = macros;
     }
 
@@ -89,8 +95,8 @@ public final class MessageHandler {
                     Log.info("[deck] " + text(message, "code") + ": " + text(message, "detail"));
                     yield List.of();
                 }
-                case "history_request" -> List.of(historyFrame(message, maxFrameBytes));
-                case "inventory_request" -> List.of(inventoryFrame(message, maxFrameBytes));
+                case "history_request" -> List.of(telemetry.historyFrame(message, maxFrameBytes));
+                case "inventory_request" -> List.of(telemetry.inventoryFrame(message, maxFrameBytes));
                 case "firmware_check" -> List.of(firmwareOffer(message));
                 case "catalog_request" -> List.of(catalogFrame(message, maxFrameBytes));
                 case "texts_request" -> List.of(textsFrame(message, maxFrameBytes));
@@ -129,7 +135,7 @@ public final class MessageHandler {
                     yield List.of();
                 }
                 case "board" -> {
-                    rememberBoard(message);
+                    boards.remember(message);
                     if (message.get("id") instanceof String deck) {
                         openAction.deckSeen(deck, message.get("keypad"));
                     }
@@ -144,16 +150,9 @@ public final class MessageHandler {
         }
     }
 
-    /**
-     * The metrics catalog for a Deck (docs/03-SERVER.md), a page from {@code from} that
-     * fits the peer's frame. A sample is taken first if none was, so the catalog is not empty.
-     */
+    /** The metrics catalog for a Deck (see {@link TelemetryReplies#catalogFrame}). */
     Map<String, Object> catalogFrame(Map<String, Object> message, int maxFrameBytes) {
-        Long from = Values.validateInt(message.get("from"));
-        if (sampler.catalog().entries().isEmpty()) {
-            sampler.sample(1.0);
-        }
-        return sampler.catalog().frame(from == null ? 0 : from.intValue(), maxFrameBytes);
+        return telemetry.catalogFrame(message, maxFrameBytes);
     }
 
     /**
@@ -180,20 +179,9 @@ public final class MessageHandler {
         return inbox;
     }
 
-    /** The most messages in one answer (the Deck keeps the newest few). */
-    private static final int MESSAGES_PER_ANSWER = 10;
-
-    /** A Deck's messages newer than the newest it has, as many as fit one frame. */
+    /** A Deck's messages newer than the newest it has (see {@link InboxReplies#messagesFrame}). */
     Map<String, Object> messagesFrame(Map<String, Object> message, int maxFrameBytes) {
-        String deck = message.get("deck") instanceof String id ? id : "";
-        long after = message.get("after") instanceof Number n ? n.longValue() : 0;
-        List<Map<String, Object>> items = inbox == null ? new ArrayList<>()
-                : new ArrayList<>(inbox.forDeck(deck, after, MESSAGES_PER_ANSWER));
-        Map<String, Object> frame = map("type", "messages", "messages", items);
-        while (!items.isEmpty() && binarySize(frame) > maxFrameBytes) {
-            items.remove(items.size() - 1);  // the rest comes with the next request
-        }
-        return frame;
+        return inboxReplies.messagesFrame(inbox, message, maxFrameBytes);
     }
 
     /**
@@ -235,22 +223,9 @@ public final class MessageHandler {
         return transfers.start(Transfers.KIND_PACK, pack.bytes());
     }
 
-    /** A Deck's recording came whole: a voice message for whom it named ("" = the PC). */
+    /** A Deck's recording came whole (see {@link InboxReplies#voiceArrived}). */
     private void voiceArrived(Uploads.Done done) {
-        MessageStore store = inbox;
-        if (store == null) {
-            return;
-        }
-        String to = done.to().isBlank() ? MessageStore.PC : done.to();
-        Map<String, Object> board = boards.get(done.deck());
-        if (board == null) {
-            board = boards.get(done.deck().toUpperCase());
-        }
-        Object name = board == null ? null : board.getOrDefault("name", board.get("board"));
-        String from = name instanceof String n && !n.isBlank() ? n : done.deck();
-        MessageStore.Message m = store.addVoice(to, from, done.bytes());
-        Log.info("[voice] message " + m.id() + " from " + from + " to " + to + ", " + m.text()
-                + " (GET /api/messages/" + m.id() + "/audio)");
+        inboxReplies.voiceArrived(inbox, done);
     }
 
     private static String text(Map<String, Object> message, String key) {
@@ -369,112 +344,15 @@ public final class MessageHandler {
     // The Deck takes 12 KB per answer and refuses a larger one: 5 frames of about 1.6 KB
     // leave room for the stats and the other replies of the same request.
     private static final int KEY_FRAMES_PER_ANSWER = 5;
-    private static final java.util.regex.Pattern DECK_ID = java.util.regex.Pattern.compile("^[0-9A-Za-z:_-]{1,32}$");
-    private static final List<String> BOARD_TEXT = List.of("board", "firmware", "chip", "display", "touch", "sd", "audio");
-    private static final List<String> BOARD_NUMBERS = List.of("rev", "cores", "mhz", "flash", "flash_build", "psram",
-            "battery_mv");
-    private static final List<String> BOARD_FLAGS = List.of("psram_in_package", "rgb_led");
-    private static final List<String> BOARD_LISTS = List.of("radios", "screen", "heap", "nvs");
-
-    /**
-     * A Deck's description: only the known fields, short texts and numbers, so a peer cannot
-     * fill the host's memory. Printed on the console when it is new or changed.
-     */
-    private void rememberBoard(Map<String, Object> message) {
-        if (!(message.get("id") instanceof String id) || !DECK_ID.matcher(id).matches()) {
-            throw new IllegalArgumentException("board needs the Deck id");
-        }
-        Map<String, Object> board = new LinkedHashMap<>();
-        board.put("id", id);
-        for (String key : BOARD_TEXT) {
-            if (message.get(key) instanceof String text) {
-                board.put(key, Values.truncateCodePoints(text, 40));
-            }
-        }
-        for (String key : BOARD_NUMBERS) {
-            if (message.get(key) instanceof Number number) {
-                board.put(key, number.longValue());
-            }
-        }
-        for (String key : BOARD_FLAGS) {
-            if (message.get(key) instanceof Boolean flag) {
-                board.put(key, flag);
-            }
-        }
-        for (String key : BOARD_LISTS) {
-            if (message.get(key) instanceof List<?> list) {
-                List<Object> copy = new ArrayList<>();
-                for (Object item : list) {
-                    if (copy.size() >= 4) {
-                        break;
-                    }
-                    if (item instanceof Number number) {
-                        copy.add(number.longValue());
-                    } else if (item instanceof String text) {
-                        copy.add(Values.truncateCodePoints(text, 8));
-                    }
-                }
-                board.put(key, copy);
-            }
-        }
-        Map<String, Object> previous = boards.size() < 64 || boards.containsKey(id) ? boards.put(id, board) : null;
-        Map<String, Object> withoutHeap = new LinkedHashMap<>(board);
-        withoutHeap.remove("heap");
-        withoutHeap.remove("nvs");
-        withoutHeap.remove("battery_mv");
-        Map<String, Object> previousWithoutHeap = previous == null ? null : new LinkedHashMap<>(previous);
-        if (previousWithoutHeap != null) {
-            previousWithoutHeap.remove("heap");
-            previousWithoutHeap.remove("nvs");
-            previousWithoutHeap.remove("battery_mv");
-        }
-        if (!withoutHeap.equals(previousWithoutHeap)) {
-            Log.info("[deck] " + describeBoard(board));
-        }
-    }
 
     /** The Decks that described themselves, by id. */
     public Map<String, Map<String, Object>> boards() {
-        return new java.util.TreeMap<>(boards);
+        return boards.snapshot();
     }
 
     /** One line for the console: what the Deck is and has. */
     public static String describeBoard(Map<String, Object> b) {
-        StringBuilder line = new StringBuilder();
-        line.append(b.get("id")).append(": ").append(b.getOrDefault("board", "?"));
-        line.append(", firmware ").append(b.getOrDefault("firmware", "?"));
-        line.append(", ").append(b.getOrDefault("chip", "?")).append(" rev ").append(b.getOrDefault("rev", "?"));
-        line.append(", ").append(b.getOrDefault("cores", "?")).append(" cores ").append(b.getOrDefault("mhz", "?")).append(" MHz");
-        long flash = b.get("flash") instanceof Long n ? n : 0;
-        long build = b.get("flash_build") instanceof Long n ? n : 0;
-        if (flash > 0) {
-            line.append(", flash ").append(flash >> 20).append(" MB");
-            if (build > 0 && build != flash) {
-                line.append(" (firmware built for ").append(build >> 20).append(" MB)");
-            }
-        }
-        long psram = b.get("psram") instanceof Long n ? n : 0;
-        if (psram > 0) {
-            line.append(", PSRAM ").append(psram >> 20).append(" MB");
-        } else if (Boolean.TRUE.equals(b.get("psram_in_package"))) {
-            line.append(", PSRAM in the chip but not enabled by this firmware");
-        }
-        if (b.get("radios") instanceof List<?> radios && !radios.isEmpty()) {
-            line.append(", radios ").append(String.join("+", radios.stream().map(String::valueOf).toList()));
-        }
-        if (b.get("screen") instanceof List<?> screen && screen.size() == 2) {
-            line.append(", screen ").append(screen.get(0)).append("x").append(screen.get(1));
-            line.append(" ").append(b.getOrDefault("display", "")).append("/").append(b.getOrDefault("touch", ""));
-        }
-        if (b.get("sd") instanceof String sd && !sd.isEmpty()) {
-            line.append(", SD ").append(sd);
-        }
-        Object audio = b.get("audio");
-        line.append(", audio ").append(audio instanceof String a && !a.isEmpty() ? a : "none");
-        if (b.get("battery_mv") instanceof Long mv && mv > 0) {
-            line.append(String.format(", battery %.2f V", mv / 1000.0));
-        }
-        return line.toString();
+        return BoardRegistry.describeBoard(b);
     }
 
     public static Map<String, Object> error(String code, String detail) {
@@ -548,81 +426,6 @@ public final class MessageHandler {
             reply.put("detail", Values.truncateCodePoints(String.valueOf(why == null ? "failed" : why), 100));
         }
         return reply;
-    }
-
-    private Map<String, Object> historyFrame(Map<String, Object> message, int maxFrameBytes) {
-        Object metricValue = message.get("metric");
-        if (!(metricValue instanceof String metric) || !MetricRegistry.has(metric)) {
-            throw new IllegalArgumentException("Unknown or missing metric");
-        }
-
-        Long minutes = Values.validateInt(message.getOrDefault("minutes", 5));
-        if (minutes == null || !MetricRegistry.isValidWindow(minutes)) {
-            throw new IllegalArgumentException("minutes must be one of " + MetricRegistry.WINDOWS);
-        }
-
-        Long requestedPoints = Values.validateInt(message.getOrDefault("points", Protocol.DEFAULT_HISTORY_POINTS));
-        if (requestedPoints == null || requestedPoints < Protocol.MIN_HISTORY_POINTS || requestedPoints > Protocol.MAX_HISTORY_POINTS) {
-            throw new IllegalArgumentException("points must be between " + Protocol.MIN_HISTORY_POINTS + " and " + Protocol.MAX_HISTORY_POINTS);
-        }
-        int points = requestedPoints.intValue();
-
-        // Make sure the newest sample is part of the answer.
-        sampler.sample(1.0);
-
-        int minutesValue = minutes.intValue();
-        var series = sampler.history().series(metric, minutesValue, points, null);
-        Map<String, Object> frame = map(
-                "type", "history",
-                "metric", metric,
-                "unit", series.unit(),
-                "minutes", minutesValue,
-                "step_s", series.stepSeconds(),
-                "end", series.end(),
-                "values", series.values());
-
-        // Shrink by halving the resolution until the frame fits the peer's limit.
-        while (binarySize(frame) > maxFrameBytes - 8 && valuesOf(frame).size() > Protocol.MIN_HISTORY_POINTS) {
-            int next = Math.max(Protocol.MIN_HISTORY_POINTS, valuesOf(frame).size() / 2);
-            var smaller = sampler.history().series(metric, minutesValue, next, null);
-            frame.put("values", smaller.values());
-            frame.put("step_s", smaller.stepSeconds());
-        }
-        if (binarySize(frame) > maxFrameBytes) {
-            throw new IllegalArgumentException("Reply does not fit the maximum frame size");
-        }
-        return frame;
-    }
-
-    private Map<String, Object> inventoryFrame(Map<String, Object> message, int maxFrameBytes) {
-        Object componentValue = message.get("component");
-        if (!(componentValue instanceof String component) || !MetricRegistry.COMPONENTS.contains(component)) {
-            throw new IllegalArgumentException("component must be one of " + MetricRegistry.COMPONENTS);
-        }
-
-        Map<String, Object> data = inventory.component(component);
-        if (data == null) {
-            data = new LinkedHashMap<>();
-        }
-        Map<String, Object> frame = map("type", "inventory", "component", component, "data", data);
-
-        // Drop list entries from the tail (extra disks / interfaces) until the frame fits.
-        for (String listKey : List.of("disks", "interfaces")) {
-            while (data.get(listKey) instanceof List<?> items && items.size() > 1
-                    && binarySize(frame) > maxFrameBytes) {
-                ((List<?>) data.get(listKey)).remove(items.size() - 1);
-                frame.put("truncated", true);
-            }
-        }
-        if (binarySize(frame) > maxFrameBytes) {
-            throw new IllegalArgumentException("Reply does not fit the maximum frame size");
-        }
-        return frame;
-    }
-
-    @SuppressWarnings("unchecked")
-    private static List<Object> valuesOf(Map<String, Object> frame) {
-        return (List<Object>) frame.get("values");
     }
 
     /** The bytes a reply takes on the link: its protocol 4 payload (docs/04-PROTOCOL.md). */

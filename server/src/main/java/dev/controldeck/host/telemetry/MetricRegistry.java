@@ -1,10 +1,12 @@
 package dev.controldeck.host.telemetry;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Metrics that can be shown as history graphs. Each maps a stable id to a field of
@@ -41,6 +43,9 @@ public final class MetricRegistry {
 
     private static final Map<String, Metric> METRICS = new LinkedHashMap<>();
 
+    /** Every stats field a registry metric reads: the whitelist for SQL column names. */
+    private static final Set<String> FIELDS = new HashSet<>();
+
     private static void add(String id, String field, String unit, String component, String label,
                             double min, Double max) {
         METRICS.put(id, new Metric(id, field, unit, component, label, min, max));
@@ -62,6 +67,9 @@ public final class MetricRegistry {
         add("disk_read", "disk_read_mbs", "MB/s", "disk", "Disk read", 0, null);
         add("disk_write", "disk_write_mbs", "MB/s", "disk", "Disk write", 0, null);
         add("disk_temp", "disk_temp", "°C", "disk", "Disk temperature", 0, 110.0);
+        for (Metric metric : METRICS.values()) {
+            FIELDS.add(metric.field());
+        }
     }
 
     private static final Map<String, String> DEFAULTS = Map.of(
@@ -87,6 +95,19 @@ public final class MetricRegistry {
     public static String fieldOf(String id) {
         Metric metric = id == null ? null : METRICS.get(id);
         return metric == null ? null : metric.field();
+    }
+
+    /**
+     * The quoted SQL column name of a stats field. Only registry fields pass; anything else
+     * (the only input that could reach SQL text) throws.
+     *
+     * @throws IllegalArgumentException for a field the registry does not define
+     */
+    public static String sqlColumn(String field) {
+        if (field == null || !FIELDS.contains(field)) {
+            throw new IllegalArgumentException("Unknown stats field '" + field + "'");
+        }
+        return "\"" + field + "\"";
     }
 
     /** Metric ids of one component, in display order. */

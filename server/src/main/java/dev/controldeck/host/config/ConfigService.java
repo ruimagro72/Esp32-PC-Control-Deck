@@ -1,14 +1,10 @@
 package dev.controldeck.host.config;
 
+import dev.controldeck.host.Defaults;
 import dev.controldeck.host.util.Values;
 
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
 import java.util.ArrayList;
-import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,18 +18,18 @@ import java.util.Map;
  *
  * Writers: the Wi-Fi transport settings and the peer token, the serial port and
  * baud rate, the history retention and the macros. The logging writer comes later.
+ *
+ * Defaults and migration live in {@link ConfigDefaults}, value checks in
+ * {@link ConfigValidator}, token generation and hashing in {@link ConfigTokens}.
  */
 public final class ConfigService {
 
     public static final int CONFIG_VERSION = 2;
     /** How many Decks can hold a token of their own. */
     public static final int MAX_DECK_TOKENS = 32;
-    private static final java.util.regex.Pattern DECK_ID = java.util.regex.Pattern.compile("^[0-9A-Za-z:_-]{1,32}$");
 
     public static final int MAX_MACRO_ID = 6;
     public static final int MAX_LABEL_LENGTH = 22;
-
-    private static final SecureRandom RANDOM = new SecureRandom();
 
     private final ConfigStore store;
     private boolean initialized;
@@ -61,80 +57,12 @@ public final class ConfigService {
     // -- defaults and normalization -------------------------------------------
 
     public static Map<String, Object> defaults() {
-        Map<String, Object> config = new LinkedHashMap<>();
-        config.put("config_version", CONFIG_VERSION);
-        config.put("api", obj("bind", "127.0.0.1", "port", 8080));
-        config.put("telemetry", obj(
-                "interval_seconds", 2.0,
-                "disk_path", "auto",
-                "history_minutes", 30,
-                "gpu_vram_total_gb", null));
-        config.put("transports", obj(
-                "serial", obj("enabled", true, "port", "auto", "baud", 115200),
-                "wifi", obj("enabled", false, "token_hash", null),
-                "ble", obj("enabled", false)));
-        config.put("logging", obj(
-                "disk_logging", false,
-                "level", "info",
-                "file", "var/log/control-deck.log",
-                "max_size_mb", 5));
-        config.put("librehardwaremonitor", obj(
-                "enabled", obj("windows", false, "linux", false, "macos", false),
-                "url", "http://127.0.0.1:8085/data.json",
-                "timeout_seconds", 0.5));
-        config.put("macros", new ArrayList<Object>());
-        // The language of the texts each Deck shows (docs/archive/design-notes/DESIGN.md): one for
-        // all, and per Deck id where it differs.
-        config.put("decks", obj("language", "en", "languages", obj()));
-        return config;
+        return ConfigDefaults.defaults();
     }
 
     /** Migrate legacy flat keys, then fill every missing key from the defaults. */
     public static Map<String, Object> normalize(Map<String, Object> raw) {
-        Map<String, Object> config = deepCopy(raw);
-
-        if (!raw.containsKey("config_version")) {
-            Map<String, Object> transports = section(config, "transports");
-            Map<String, Object> serial = sectionOf(transports, "serial");
-            Map<String, Object> telemetry = section(config, "telemetry");
-            if (raw.containsKey("serial_port")) {
-                serial.put("port", raw.get("serial_port"));
-            }
-            if (raw.containsKey("baud")) {
-                Long baud = Values.validateInt(raw.get("baud"));
-                serial.put("baud", baud != null ? baud.intValue() : 0);
-            }
-            if (raw.containsKey("interval_seconds")) {
-                telemetry.put("interval_seconds", toDouble(raw.get("interval_seconds")));
-            }
-            if (raw.containsKey("disk_path")) {
-                telemetry.put("disk_path", raw.get("disk_path"));
-            }
-            for (String legacy : List.of("serial_port", "baud", "interval_seconds", "disk_path", "log_file")) {
-                config.remove(legacy);
-            }
-        }
-
-        Map<String, Object> merged = mergeDefaults(defaults(), config);
-        merged.put("config_version", CONFIG_VERSION);
-        Object macros = merged.get("macros");
-        merged.put("macros", macros instanceof List<?> ? new ArrayList<Object>((List<?>) macros) : new ArrayList<Object>());
-        return merged;
-    }
-
-    @SuppressWarnings("unchecked")
-    private static Map<String, Object> mergeDefaults(Map<String, Object> defaults, Map<String, Object> values) {
-        Map<String, Object> result = new LinkedHashMap<>(defaults);
-        for (Map.Entry<String, Object> entry : values.entrySet()) {
-            Object fallback = defaults.get(entry.getKey());
-            if (entry.getValue() instanceof Map<?, ?> valueMap && fallback instanceof Map<?, ?> fallbackMap
-                    && !fallbackMap.isEmpty()) {
-                result.put(entry.getKey(), mergeDefaults((Map<String, Object>) fallbackMap, (Map<String, Object>) valueMap));
-            } else {
-                result.put(entry.getKey(), entry.getValue());
-            }
-        }
-        return result;
+        return ConfigDefaults.normalize(raw);
     }
 
     // -- load / save ----------------------------------------------------------
@@ -227,25 +155,7 @@ public final class ConfigService {
      * {@link #MAX_LABEL_LENGTH} characters. The action is checked by the macro model.
      */
     public synchronized void setMacros(List<Map<String, Object>> macros) {
-        java.util.Set<Long> seen = new java.util.HashSet<>();
-        for (Map<String, Object> macro : macros) {
-            Long id = macro == null ? null : Values.validateInt(macro.get("id"));
-            if (id == null) {
-                throw new IllegalArgumentException("Macro ID must be numeric");
-            }
-            if (id < 1 || id > MAX_MACRO_ID) {
-                throw new IllegalArgumentException("Macro ID must be between 1 and " + MAX_MACRO_ID);
-            }
-            if (!seen.add(id)) {
-                throw new IllegalArgumentException("Duplicate macro ID " + id);
-            }
-            if (!(macro.get("label") instanceof String label) || label.isBlank()) {
-                throw new IllegalArgumentException("Macro label is required");
-            }
-            if (Values.codePointLength(label) > MAX_LABEL_LENGTH) {
-                throw new IllegalArgumentException("Label exceeds " + MAX_LABEL_LENGTH + " characters");
-            }
-        }
+        ConfigValidator.macros(macros);
         Map<String, Object> config = loadRaw();
         config.put("macros", new ArrayList<Object>(macros));
         save(config);
@@ -265,9 +175,7 @@ public final class ConfigService {
 
     /** Sets a Deck's language, or the one for all when {@code deckId} is null. */
     public synchronized void setDeckLanguage(String deckId, String language) {
-        if (language == null || !language.matches("[a-z]{2}")) {
-            throw new IllegalArgumentException("language must be two lower-case letters (en, pt, es ...)");
-        }
+        ConfigValidator.language(language);
         Map<String, Object> config = loadRaw();
         Map<String, Object> decks = section(config, "decks");
         if (deckId == null) {
@@ -286,9 +194,7 @@ public final class ConfigService {
 
     /** How many minutes of telemetry history are kept (20 to 240). */
     public synchronized void setHistoryMinutes(int minutes) {
-        if (minutes < 20 || minutes > 240) {
-            throw new IllegalArgumentException("history_minutes must be an integer between 20 and 240");
-        }
+        ConfigValidator.historyMinutes(minutes);
         Map<String, Object> config = loadRaw();
         section(config, "telemetry").put("history_minutes", minutes);
         save(config);
@@ -309,18 +215,10 @@ public final class ConfigService {
         Map<String, Object> config = loadRaw();
         Map<String, Object> serial = sectionOf(section(config, "transports"), "serial");
         if (settings.containsKey("port")) {
-            Object port = settings.get("port");
-            if (!(port instanceof String text) || text.isBlank() || text.length() > 255) {
-                throw new IllegalArgumentException("port must be \"auto\" or a device name such as /dev/ttyACM0 or COM4");
-            }
-            serial.put("port", text.trim());
+            serial.put("port", ConfigValidator.serialPort(settings.get("port")));
         }
         if (settings.containsKey("baud")) {
-            Long baud = Values.validateInt(settings.get("baud"));
-            if (baud == null || baud <= 0 || baud > 4_000_000) {
-                throw new IllegalArgumentException("baud must be a positive integer");
-            }
-            serial.put("baud", baud.intValue());
+            serial.put("baud", ConfigValidator.baud(settings.get("baud")));
         }
         if (settings.containsKey("enabled")) {
             serial.put("enabled", truthy(settings.get("enabled")));
@@ -348,7 +246,7 @@ public final class ConfigService {
         return new WifiSettings(
                 truthy(wifi.get("enabled")),
                 String.valueOf(api.get("bind")),
-                port == null ? 8080 : port.intValue(),
+                port == null ? Defaults.API_PORT : port.intValue(),
                 hash == null ? null : String.valueOf(hash),
                 List.copyOf(deckHashes));
     }
@@ -379,19 +277,10 @@ public final class ConfigService {
             wifi.put("enabled", truthy(settings.get("enabled")));
         }
         if (settings.containsKey("bind")) {
-            Object bind = settings.get("bind");
-            if (!(bind instanceof String text) || !(isIpAddress(text) || "localhost".equals(text))) {
-                throw new IllegalArgumentException(
-                        "bind must be an IP address (for example 127.0.0.1, 0.0.0.0 or a LAN address)");
-            }
-            section(config, "api").put("bind", text);
+            section(config, "api").put("bind", ConfigValidator.bind(settings.get("bind")));
         }
         if (settings.containsKey("port")) {
-            Long port = Values.validateInt(settings.get("port"));
-            if (port == null || port < 1 || port > 65535) {
-                throw new IllegalArgumentException("port must be an integer between 1 and 65535");
-            }
-            section(config, "api").put("port", port.intValue());
+            section(config, "api").put("port", ConfigValidator.port(settings.get("port")));
         }
         save(config);
     }
@@ -401,9 +290,7 @@ public final class ConfigService {
      * is returned once and cannot be recovered.
      */
     public String rotateWifiToken() {
-        byte[] bytes = new byte[24];
-        RANDOM.nextBytes(bytes);
-        String token = HexFormat.of().formatHex(bytes);
+        String token = ConfigTokens.newToken();
         Map<String, Object> config = loadRaw();
         sectionOf(section(config, "transports"), "wifi").put("token_hash", sha256Hex(token));
         save(config);
@@ -418,12 +305,8 @@ public final class ConfigService {
      */
     @SuppressWarnings("unchecked")
     public synchronized String issueDeckToken(String deckId) {
-        if (deckId == null || !DECK_ID.matcher(deckId).matches()) {
-            throw new IllegalArgumentException("Invalid Deck id");
-        }
-        byte[] bytes = new byte[24];
-        RANDOM.nextBytes(bytes);
-        String token = HexFormat.of().formatHex(bytes);
+        ConfigValidator.deckId(deckId);
+        String token = ConfigTokens.newToken();
         Map<String, Object> config = loadRaw();
         Map<String, Object> wifi = sectionOf(section(config, "transports"), "wifi");
         Map<String, Object> decks = wifi.get("deck_tokens") instanceof Map<?, ?> existing
@@ -463,77 +346,19 @@ public final class ConfigService {
     }
 
     public static String sha256Hex(String text) {
-        try {
-            byte[] digest = MessageDigest.getInstance("SHA-256").digest(text.getBytes(StandardCharsets.UTF_8));
-            return HexFormat.of().formatHex(digest);
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 is not available", e);
-        }
+        return ConfigTokens.sha256Hex(text);
     }
 
     static boolean isIpAddress(String text) {
-        if (text.matches("^(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})$")) {
-            for (String octet : text.split("\\.")) {
-                if (Integer.parseInt(octet) > 255) {
-                    return false;
-                }
-            }
-            return true;
-        }
-        // IPv6 literal (loose check: hex digits, colons and an optional embedded IPv4).
-        return text.contains(":") && text.matches("^[0-9A-Fa-f:.]+$");
+        return ConfigValidator.isIpAddress(text);
     }
 
-    @SuppressWarnings("unchecked")
     static Map<String, Object> section(Map<String, Object> config, String key) {
-        Object value = config.get(key);
-        if (!(value instanceof Map<?, ?>)) {
-            Map<String, Object> created = new LinkedHashMap<>();
-            config.put(key, created);
-            return created;
-        }
-        return (Map<String, Object>) value;
+        return ConfigDefaults.section(config, key);
     }
 
     private static Map<String, Object> sectionOf(Map<String, Object> parent, String key) {
         return section(parent, key);
-    }
-
-    private static Map<String, Object> deepCopy(Map<String, Object> source) {
-        Map<String, Object> copy = new LinkedHashMap<>();
-        for (Map.Entry<String, Object> entry : source.entrySet()) {
-            Object value = entry.getValue();
-            if (value instanceof Map<?, ?> nested) {
-                @SuppressWarnings("unchecked")
-                Map<String, Object> typed = (Map<String, Object>) nested;
-                copy.put(entry.getKey(), deepCopy(typed));
-            } else if (value instanceof List<?> items) {
-                copy.put(entry.getKey(), new ArrayList<Object>(items));
-            } else {
-                copy.put(entry.getKey(), value);
-            }
-        }
-        return copy;
-    }
-
-    private static double toDouble(Object value) {
-        if (value instanceof Number n) {
-            return n.doubleValue();
-        }
-        try {
-            return Double.parseDouble(String.valueOf(value).trim());
-        } catch (NumberFormatException e) {
-            return 0.0;
-        }
-    }
-
-    /** Builds an insertion-ordered map from alternating key/value arguments. */
-    static Map<String, Object> obj(Object... pairs) {
-        Map<String, Object> map = new LinkedHashMap<>();
-        for (int i = 0; i < pairs.length; i += 2) {
-            map.put((String) pairs[i], pairs[i + 1]);
-        }
-        return map;
     }
 
     /**

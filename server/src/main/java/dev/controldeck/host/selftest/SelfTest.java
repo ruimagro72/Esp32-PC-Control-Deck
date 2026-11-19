@@ -29,6 +29,7 @@ public final class SelfTest {
         TransferTests.run(runner);
         PackTests.run(runner);
         ConsoleTests.run(runner);
+        ScopeTests.run(runner);
         return runner.summary();
     }
 }

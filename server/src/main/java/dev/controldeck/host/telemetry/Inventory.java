@@ -30,6 +30,8 @@ public final class Inventory {
     private static final Pattern BDF = Pattern.compile("([0-9a-f]{4}:[0-9a-f]{2}:[0-9a-f]{2}\\.[0-9a-f])$", Pattern.CASE_INSENSITIVE);
     private static final Pattern LSPCI_LINE = Pattern.compile("^\\S+\\s+\"[^\"]*\"\\s+\"([^\"]*)\"\\s+\"([^\"]*)\"");
     private static final List<String> LSPCI_CANDIDATES = List.of("/usr/bin/lspci", "/usr/sbin/lspci", "/bin/lspci", "/sbin/lspci");
+    /** Most bytes read from lspci output; a normal line is a few hundred bytes. */
+    private static final int MAX_LSPCI_OUTPUT_BYTES = 1 << 20;
 
     private final SysFs fs;
     private final String diskPath;
@@ -315,7 +317,7 @@ public final class Inventory {
                     .redirectError(ProcessBuilder.Redirect.DISCARD)
                     .start();
             process.getOutputStream().close();
-            String output = new String(process.getInputStream().readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+            String output = new String(process.getInputStream().readNBytes(MAX_LSPCI_OUTPUT_BYTES), java.nio.charset.StandardCharsets.UTF_8);
             if (!process.waitFor(2, TimeUnit.SECONDS)) {
                 process.destroyForcibly();
                 return null;

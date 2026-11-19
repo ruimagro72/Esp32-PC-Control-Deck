@@ -62,7 +62,8 @@ public final class WsTcpBridge implements AutoCloseable {
         int c = target.lastIndexOf(':');
         String token = System.getenv("CONTROL_DECK_BRIDGE_TOKEN");
         new WsTcpBridge(listen, "127.0.0.1", target.substring(0, c), Integer.parseInt(target.substring(c + 1)),
-                presented -> token != null && !token.isEmpty() && token.equals(presented));
+                presented -> token != null && !token.isEmpty()
+                        && MessageDigest.isEqual(token.getBytes(StandardCharsets.UTF_8), presented.getBytes(StandardCharsets.UTF_8)));
         System.out.println("Bridge: ws://127.0.0.1:" + listen + " -> " + target + " (loopback, Ctrl+C to stop)");
         Thread.currentThread().join();
     }

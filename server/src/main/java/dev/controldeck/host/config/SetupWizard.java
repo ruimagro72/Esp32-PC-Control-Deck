@@ -1,5 +1,6 @@
 package dev.controldeck.host.config;
 
+import dev.controldeck.host.Defaults;
 import dev.controldeck.host.util.Values;
 
 import java.io.BufferedReader;
@@ -50,7 +51,7 @@ public final class SetupWizard {
                 String.valueOf(api.get("bind")),
                 text -> ConfigService.isIpAddress(text) || "localhost".equals(text) ? null
                         : "Enter an IP address such as 127.0.0.1, 0.0.0.0 or a LAN address.");
-        int port = askInt("API port", intOr(api.get("port"), 8080), 1, 65535);
+        int port = askInt("API port", intOr(api.get("port"), Defaults.API_PORT), 1, 65535);
         boolean wifiEnabled = askYesNo("Allow ESP32 boards on the Wi-Fi network to connect (needs a token)",
                 ConfigService.truthy(wifi.get("enabled")));
         String serialPort = ask("USB serial port (auto, or a device such as /dev/ttyACM0 or COM4)",

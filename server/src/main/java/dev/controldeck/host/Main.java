@@ -54,7 +54,6 @@ import java.util.concurrent.CountDownLatch;
 public final class Main {
 
     private static final String VERSION = "0.7.0";
-    private static final long RECONNECT_DELAY_MS = 2000;
 
     private Main() {
     }
@@ -122,8 +121,8 @@ public final class Main {
             return;
         }
 
-        String bind = optionValue(argv, "--bind", String.valueOf(api.getOrDefault("bind", "127.0.0.1")));
-        Long port = Values.validateInt(optionValue(argv, "--port", String.valueOf(api.getOrDefault("port", 8080))));
+        String bind = optionValue(argv, "--bind", String.valueOf(api.getOrDefault("bind", Defaults.LOOPBACK_BIND)));
+        Long port = Values.validateInt(optionValue(argv, "--port", String.valueOf(api.getOrDefault("port", Defaults.API_PORT))));
         if (port == null || port < 1 || port > 65535) {
             System.err.println("--port must be an integer between 1 and 65535");
             System.exit(2);
@@ -162,13 +161,13 @@ public final class Main {
         SerialBridge serial = argv.contains("--no-serial") ? null : new SerialBridge(
                 SerialBridge.settingsFrom(config, serialPort, baudOverride), services.messages(),
                 age -> services.sampler().sample(age).frame(), services.transports(), new JSerialCommProvider(),
-                SerialLog.console(), RECONNECT_DELAY_MS, PortResolver.Os.detect(System.getProperty("os.name")));
+                SerialLog.console(), Defaults.RECONNECT_DELAY_MS, PortResolver.Os.detect(System.getProperty("os.name")));
         BleBridges ble = argv.contains("--no-ble") ? null : new BleBridges(
                 SerialBridge.settingsFrom(config, serialPort, baudOverride), services.messages(),
                 age -> services.sampler().sample(age).frame(), services.transports(), bleHelper());
         // A host that listens on this computer only has nothing to tell the network.
         DiscoveryResponder discovery = null;
-        if (!List.of("127.0.0.1", "localhost", "::1").contains(bind)) {
+        if (!Defaults.LOOPBACK_HOSTS.contains(bind)) {
             try {
                 discovery = new DiscoveryResponder(DiscoveryResponder.DEFAULT_PORT, port.intValue(),
                         () -> config.getWifiSettings().enabled());
@@ -264,12 +263,12 @@ public final class Main {
      * (docs/CONSOLE.md). The port is --port, else the saved api.port.
      */
     private static int console(List<String> argv) {
-        String fallback = "8080";
+        String fallback = String.valueOf(Defaults.API_PORT);
         if (!argv.contains("--port")) {
             try {
                 ConfigService config = Services.forHost().config();
                 Map<String, Object> api = config.load().get("api") instanceof Map<?, ?> m ? castMap(m) : Map.of();
-                fallback = String.valueOf(api.getOrDefault("port", 8080));
+                fallback = String.valueOf(api.getOrDefault("port", Defaults.API_PORT));
                 config.close();
             } catch (RuntimeException error) {
                 // no settings to read: the default port

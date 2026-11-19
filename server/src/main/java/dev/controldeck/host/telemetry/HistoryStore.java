@@ -93,7 +93,7 @@ public final class HistoryStore {
             StringBuilder columns = new StringBuilder();
             StringBuilder marks = new StringBuilder();
             for (String field : fields) {
-                columns.append(",\"").append(field).append('"');
+                columns.append(',').append(MetricRegistry.sqlColumn(field));
                 marks.append(",?");
             }
             String sql = "INSERT OR REPLACE INTO samples (t" + columns + ") VALUES (?" + marks + ")";
@@ -172,7 +172,7 @@ public final class HistoryStore {
         }
         int received = 0;
         Double latest = null;
-        String column = "\"" + field + "\"";
+        String column = MetricRegistry.sqlColumn(field);
 
         try {
             Connection db = db();
@@ -245,7 +245,7 @@ public final class HistoryStore {
             return false;
         }
         try (PreparedStatement stmt = db().prepareStatement(
-                "SELECT 1 FROM samples WHERE t >= ? AND \"" + field + "\" IS NOT NULL LIMIT 1")) {
+                "SELECT 1 FROM samples WHERE t >= ? AND " + MetricRegistry.sqlColumn(field) + " IS NOT NULL LIMIT 1")) {
             stmt.setDouble(1, HostMetrics.nowSeconds() - retentionSeconds);
             try (ResultSet rs = stmt.executeQuery()) {
                 return rs.next();
@@ -334,7 +334,7 @@ public final class HistoryStore {
         try (Statement stmt = db.createStatement()) {
             for (String field : fields()) {
                 if (!have.contains(field)) {
-                    stmt.execute("ALTER TABLE samples ADD COLUMN \"" + field + "\" REAL");
+                    stmt.execute("ALTER TABLE samples ADD COLUMN " + MetricRegistry.sqlColumn(field) + " REAL");
                 }
             }
         }
