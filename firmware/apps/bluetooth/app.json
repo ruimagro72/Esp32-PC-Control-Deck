@@ -7,5 +7,6 @@
   "type": "App",
   "category": "System",
   "api": 3,
-  "main": "main.js"
+  "main": "main.js",
+  "paths": { "data": "/sd/UserData/bluetooth" }
 }

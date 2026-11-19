@@ -17,7 +17,12 @@ var DeckNet = (function () {
     W.prototype.u16 = function (v) { this.a.push(v & 255, (v >> 8) & 255); return this; };
     W.prototype.u32 = function (v) { this.a.push(v & 255, (v >> 8) & 255, (v >> 16) & 255, (v >>> 24) & 255); return this; };
     W.prototype.str = function (s) {
-        var b = utf8(s); if (b.length > 255) b = b.slice(0, 255);
+        var b = utf8(s);
+        if (b.length > 255) {                              // cut on a character start, never inside a UTF-8 sequence
+            var n = 255;
+            while (n > 0 && (b[n] & 0xC0) === 0x80) n--;   // b[n] is the first dropped byte; walk back to a lead byte
+            b = b.slice(0, n);
+        }
         this.a.push(b.length); for (var i = 0; i < b.length; i++) this.a.push(b[i]); return this;
     };
     function utf8(s) {
@@ -31,12 +36,19 @@ var DeckNet = (function () {
         return o;
     }
     function fromUtf8(b, p, n) {
-        var s = "";
-        for (var i = p; i < p + n;) {
-            var c = b[i++];
-            if (c >= 0xE0) { c = ((c & 15) << 12) | ((b[i++] & 63) << 6) | (b[i++] & 63); }
-            else if (c >= 0xC0) { c = ((c & 31) << 6) | (b[i++] & 63); }
-            s += String.fromCharCode(c);
+        var s = "", end = p + n, i = p;
+        function cont() { return i < end ? (b[i++] & 63) : 0; }   // bounds: a truncated sequence reads as 0
+        while (i < end) {
+            var c = b[i++], cp;
+            if (c < 0x80) s += String.fromCharCode(c);
+            else if (c >= 0xF0) {                                  // 4 bytes: surrogate pair in the JS string
+                cp = ((c & 7) << 18) | (cont() << 12) | (cont() << 6) | cont();
+                if (cp < 0x10000 || cp > 0x10FFFF) s += "�";
+                else { cp -= 0x10000; s += String.fromCharCode(0xD800 + (cp >> 10), 0xDC00 + (cp & 0x3FF)); }
+            }
+            else if (c >= 0xE0) s += String.fromCharCode(((c & 15) << 12) | (cont() << 6) | cont());
+            else if (c >= 0xC0) s += String.fromCharCode(((c & 31) << 6) | cont());
+            else s += "�";                                   // stray continuation byte
         }
         return s;
     }
@@ -101,6 +113,23 @@ var DeckNet = (function () {
         }
         return o;
     }
+    // ---- messages (0x4E): the payload is checked before each read; a truncated list is dropped whole ----
+    function have(r, n) { return r.left() >= n; }
+    function messagesPayload(r) {
+        var out = [], k;
+        if (!have(r, 1)) return null;
+        k = r.u8();
+        while (k-- > 0) {
+            if (!have(r, 10)) return null;                       // u32 id, u32 time, u8 kind, u8 flags
+            var id = r.u32(), ts = r.u32(), kind = r.u8(), flags = r.u8();
+            if (!have(r, 1) || !have(r, 1 + r.b[r.p])) return null;   // str from
+            var from = r.str();
+            if (!have(r, 2) || !have(r, 2 + (r.b[r.p] | (r.b[r.p + 1] << 8)))) return null;   // str16 text
+            var text = r.str16();
+            out.push({ id: id, from: from, text: text, ts: ts, read: (flags & 1) === 1, voice: kind === 1 });
+        }
+        return out;
+    }
     // ---- decode one frame into a message ----
     var NAMES = { 0x40: "host_hello", 0x41: "ping", 0x42: "stats", 0x43: "config", 0x48: "wifi_token", 0x4E: "messages", 0x7F: "error" };
     function decode(f) {
@@ -113,6 +142,7 @@ var DeckNet = (function () {
         if (t === 0x40) { m.protocol = r.u8(); m.statsMs = r.u16(); var k = r.u8(); m.windows = []; while (k--) m.windows.push(r.u8()); m.time = r.u32(); }
         else if (t === 0x42) { m.seconds = r.u32(); m.day = r.u8(); m.month = r.u8(); m.values = []; for (var i = 0; i < 19 && r.left() >= 4; i++) m.values.push(r.f32()); }
         else if (t === 0x43) { var c = r.u8(); m.macros = []; while (c--) m.macros.push({ key: r.u8(), label: r.str() }); }
+        else if (t === 0x4E) { m.messages = messagesPayload(r); if (!m.messages) return null; }
         else if (t === 0x7F) { m.errorCode = r.u8(); m.detail = r.str(); }
         return m;
     }
@@ -132,6 +162,9 @@ var DeckNet = (function () {
         statsRequest: function (id) { return frame(0x04, new W().str(id).a); },
         configRequest: function () { return frame(0x05, []); },
         macro: function (key, id) { return frame(0x06, new W().u8(key).str(id).a); },
+        // newest: the newest message id the Deck has (0 none); the answer holds the messages after it.
+        messagesRequest: function (id, newest) { return frame(0x10, new W().str(id).u32(newest).a); },
+        messageRead: function (id, msg) { return frame(0x11, new W().str(id).u32(msg).a); },
         // Send frames over Wi-Fi; post(url, body, type, headers) is Network.post (or a stand-in on the PC).
         exchange: function (post, base, token, frames) {
             var all = [];

@@ -220,6 +220,38 @@ it sends `host_hello`, `config`, the five `inventory`, `wifi_token` (USB), then 
 interval. The Deck asks `texts_request` and `catalog_request` when it has not got them.
 Wi-Fi: the Deck sends `hello` and `stats_request` in its requests; the answers carry the rest.
 
+## Messages: the Deck's inbox (0x10, 0x11, 0x4E)
+
+The exact layouts, in one place. All integers little endian; `str` and `str16` as in
+"Field types". Server: `inbox/MessageStore.java`, `protocol/Codec4.java`, `protocol/MessageHandler.java`.
+Self-tests: `./start.sh test server` (InboxTests).
+
+| Type | Direction | Payload, in order |
+| --- | --- | --- |
+| 0x10 `messages_request` | Deck to server | `str` Deck id, `u32` after: the newest message id the Deck has (0 at first) |
+| 0x11 `message_read` | Deck to server | `str` Deck id, `u32` message id. No answer frame |
+| 0x4E `messages` | server to Deck | `u8` n (0 to 10), then n times: `u32` id, `u32` time (Unix seconds), `u8` kind (0 text, 1 voice), `u8` flags (bit 0: read by this Deck; other bits 0), `str` from (at most 24 characters), `str16` text (at most 500 characters and 1500 UTF-8 bytes; a voice message: its length as text, e.g. `12 s`) |
+
+Sizes: a `str` costs 1 + its bytes. 0x10 and 0x11 are 5 + the id's bytes (12-hex id: 17 bytes).
+A 0x4E payload is at most 2048 bytes (`Frame4.MAX_PAYLOAD`); the server never sends a larger one.
+
+Rules:
+- **Which messages.** Those addressed to this Deck or to `all`, with id greater than `after`, in
+  store order (oldest first), at most 10 per reply and only as many as fit one frame; the rest
+  comes with the next request. The Deck pages by asking again with `after` = the newest id it
+  got. Read messages are still listed while their id is greater than `after`, with bit 0 set.
+- **Empty reply is valid:** a 0x4E with n = 0.
+- **Read.** 0x11 marks the message read for that Deck only; other Decks still see it unread.
+  An unknown id, a message not for this Deck, or a malformed Deck id is ignored: no answer, no error.
+- **Deck id.** 1 to 32 of `0-9 A-Z a-z : _ -` (the chip's MAC is 12 hex digits). `all` and `pc`
+  are never a Deck id: a request that names them lists nothing and reads nothing.
+- **Limits.** Text: 500 characters, cut to 1500 UTF-8 bytes when stored (cut, not refused). From: 24 characters.
+  The server keeps the newest 100 messages. One message of the largest size fits one 0x4E frame.
+- **Who may ask.** Over Wi-Fi a Deck with its own token (`requireOwnDeck`) only speaks for its own
+  Deck id; the shared token and loopback name any Deck. Over USB and BLE the link is the Deck's.
+- **Web side.** `POST /api/messages {"text", "to": "<Deck id>" | "all" | "pc", "from"}` leaves a text
+  message; `to` absent means `all`. A message for one Deck never reaches another Deck.
+
 ## What the messages mean
 
 Kept from protocol 3: the layout changed, the meaning did not.

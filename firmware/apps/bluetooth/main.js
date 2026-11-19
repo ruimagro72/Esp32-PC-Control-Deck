@@ -1,12 +1,28 @@
-// Deck Bluetooth screen: what the board supports, make the Deck visible (BLE advertising),
-// scan for devices. Colours are 24-bit RGB (KryonOS JS).
+// Deck Bluetooth screen: what the board supports, one Bluetooth switch (ON = radio on and visible
+// as the Deck name over BLE), scan for devices, keyboard. Colours are 24-bit RGB (KryonOS JS).
 var W = Display.width(), H = Display.height();
 function rgb(r, g, b) { var c = ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3); return c; }   // RGB565, bytes swapped as KryonOS JS wants
 var C_BAR = rgb(30, 70, 160), C_TXT = rgb(255, 255, 255), C_DIM = rgb(200, 200, 200), C_ON = rgb(40, 160, 40),
     C_BTN = rgb(70, 80, 100), C_STAT = rgb(255, 220, 0);
-var PY = 50, BY = 96, BH = 40;   // power row, then visible/scan; big enough for this touch panel (about 5-10 px error)
-var NAME = "DeckTest";
-var caps = {}, power = true, visible = false, scanning = false, status = "", devices = {}, order = [];
+var PY = 50, BY = 96, BH = 40;   // power row, then scan; big enough for this touch panel (about 5-10 px error)
+// Advertised name: key "name" of bluetooth.json in paths.data (app.json). Default: "KryonOS Deck" plus the
+// last 4 hex digits of the Bluetooth MAC, so each board has its own name.
+var DEFAULT_NAME = "KryonOS Deck";
+function defaultName() {
+    var hex = String(Bluetooth.getMacAddress() || "").replace(/[^0-9A-Fa-f]/g, "");
+    var tail = hex.slice(-4);
+    return hex.length >= 4 && /[1-9A-Fa-f]/.test(tail) ? DEFAULT_NAME + " " + tail.toUpperCase() : DEFAULT_NAME;
+}
+var NAME = defaultName(), PATHS = {};
+try { PATHS = JSON.parse(FS.readTextFile("app.json")).paths || {}; } catch (e) {}
+if (PATHS.data) {
+    try {
+        var btRaw = FS.readTextFile(PATHS.data + "/bluetooth.json");
+        var btCfg = btRaw ? JSON.parse(btRaw) : {};
+        if (btCfg.name && String(btCfg.name).trim()) NAME = String(btCfg.name).trim();
+    } catch (e) {}
+}
+var caps = {}, power = false, scanning = false, status = "", devices = {}, order = [];
 
 function txt(s, x, y, col, bg, f) { Display.setTextColor(col, bg); Display.drawString(s, x, y, f || 2); }
 function button(x, y, w, h, label, on) {
@@ -64,8 +80,7 @@ function draw() {
         "   Classic: " + (caps.classic ? "yes" : "not on this board"), 6, 32, C_DIM, 0);
     button(6, PY, W / 2 - 12, BH, power ? "Bluetooth: ON" : "Bluetooth: OFF", power);
     button(W / 2 + 6, PY, W / 2 - 12, BH, "Keyboard...", Keyboard.hostStatus && Keyboard.hostStatus().connected);
-    button(6, BY, W / 2 - 12, BH, visible ? "Visible: ON" : "Visible: OFF", visible);
-    button(W / 2 + 6, BY, W / 2 - 12, BH, scanning ? "Scanning..." : "Scan", scanning);
+    button(6, BY, W - 12, BH, scanning ? "Scanning..." : "Scan", scanning);
     drawStatus();
     var y = BY + BH + 26;
     for (var i = 0; i < order.length && y < H - 16; i++, y += 18) {
@@ -76,9 +91,23 @@ function draw() {
 function drawStatus() { Display.fillRect(0, BY + BH + 4, W, 18, 0); txt(status, 6, BY + BH + 5, C_STAT, 0); }
 function setStatus(s) { status = s; draw(); }
 
-Bluetooth.enable();
+// The switch shows the real radio state (the same one KryonOS Settings changes); opening the app does not turn it on.
+function radioOn() {
+    if (!Bluetooth.enable()) return "Bluetooth did not start.";
+    if (!Bluetooth._raw.startAdv(NAME, [], 160, 160)) { Bluetooth.disable(); return "Advertising did not start. Bluetooth off."; }
+    power = true;
+    return "On. Visible as '" + NAME + "' (BLE). MAC " + Bluetooth.getMacAddress() + ".";
+}
+function radioOff() {
+    if (scanning) { Bluetooth.BLE.Scanner.stop(); scanning = false; }
+    if (power) Bluetooth._raw.stopAdv();
+    if (Bluetooth.disable()) { power = false; return "Bluetooth off."; }
+    return "Bluetooth did not turn off.";
+}
 caps = Bluetooth.getCapabilities() || {};
-setStatus("On. MAC " + Bluetooth.getMacAddress() + ". Not visible.");
+power = Bluetooth.getState() === "poweredOn";
+setStatus(power ? (Bluetooth._raw.startAdv(NAME, [], 160, 160) ? "On. Visible as '" + NAME + "' (BLE)." : "On. Not visible: advertising did not start.")
+                : "Off. Tap the top button to turn on.");
 Bluetooth.BLE.Scanner.on("discover", function (d) {
     if (!devices[d.address]) order.push(d.address);
     devices[d.address] = { name: d.name, addr: d.address, rssi: d.rssi };
@@ -97,22 +126,12 @@ while (true) {
     if (!down) continue;
     down = false;
     if (ty >= PY - 4 && ty <= PY + BH + 2 && tx >= W / 2) { keyboardScreen(); draw(); continue; }
-    if (ty >= PY - 4 && ty <= PY + BH + 2) {                       // power on/off
-        if (power) {
-            if (scanning) { Bluetooth.BLE.Scanner.stop(); scanning = false; }
-            if (visible) { Bluetooth._raw.stopAdv(); visible = false; }
-            Bluetooth.disable(); power = false; setStatus("Bluetooth off.");
-        } else {
-            Bluetooth.enable(); power = true; setStatus("On. MAC " + Bluetooth.getMacAddress() + ". Not visible.");
-        }
+    if (ty >= PY - 4 && ty <= PY + BH + 2) {                       // the one Bluetooth switch
+        setStatus(power ? radioOff() : radioOn());
         continue;
     }
     if (!power) { setStatus("Bluetooth is off: tap the top button."); continue; }
-    if (ty >= BY - 6 && ty <= BY + BH + 6 && tx < W / 2) {
-        if (!visible) visible = Bluetooth._raw.startAdv(NAME, [], 160, 160);
-        else { Bluetooth._raw.stopAdv(); visible = false; }
-        setStatus(visible ? "Visible as '" + NAME + "' (BLE). The PC must scan for BLE." : "Not visible.");
-    } else if (ty >= BY - 6 && ty <= BY + BH + 6 && tx >= W / 2 && !scanning) {
+    if (ty >= BY - 6 && ty <= BY + BH + 6 && !scanning) {
         devices = {}; order = [];
         scanning = Bluetooth.BLE.Scanner.start({ timeout: 0, active: true });
         scanEnd = System.millis() + 8000;

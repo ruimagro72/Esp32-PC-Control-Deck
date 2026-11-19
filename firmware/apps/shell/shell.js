@@ -3,6 +3,7 @@
 // the safe mode). It will become the Deck's pages, macros and server status.
 var W = Display.width(), H = Display.height();
 var BAR = 28, ROW = 38;
+var BTN_W = 66, PREV_X = 6, NEXT_X = 84;             // footer buttons: drawn and hit-tested from these
 function rgb(r, g, b) { var c = ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3); return c; }   // RGB565, bytes swapped as KryonOS JS wants
 
 function apps() {
@@ -46,10 +47,10 @@ function draw() {
         Display.drawString(list[k].name, 14, y + 7, 2);
     }
     var by = H - ROW + 2;
-    Display.fillRect(6, by, 66, ROW - 6, rgb(90, 90, 90)); Display.setTextColor(rgb(255, 220, 0), rgb(90, 90, 90));
-    Display.drawString("<", 34, by + 7, 2);
-    Display.fillRect(84, by, 66, ROW - 6, rgb(90, 90, 90)); Display.setTextColor(rgb(255, 220, 0), rgb(90, 90, 90));
-    Display.drawString(">", 112, by + 7, 2);
+    Display.fillRect(PREV_X, by, BTN_W, ROW - 6, rgb(90, 90, 90)); Display.setTextColor(rgb(255, 220, 0), rgb(90, 90, 90));
+    Display.drawString("<", PREV_X + 28, by + 7, 2);
+    Display.fillRect(NEXT_X, by, BTN_W, ROW - 6, rgb(90, 90, 90)); Display.setTextColor(rgb(255, 220, 0), rgb(90, 90, 90));
+    Display.drawString(">", NEXT_X + 28, by + 7, 2);
     Display.setTextColor(rgb(160, 160, 160), 0); Display.drawString((page + 1) + "/" + Math.max(1, Math.ceil(list.length / perPage)), 160, by + 9, 2);
     Display.fillRect(W - 86, by, 80, ROW - 6, rgb(170, 30, 30)); Display.setTextColor(rgb(255, 255, 255), rgb(170, 30, 30));
     Display.drawString("System", W - 74, by + 7, 2);
@@ -65,10 +66,10 @@ while (true) {
     down = false;
     if (ty >= H - ROW) {
         if (tx >= W - 86) break;                         // System: leave the shell (safe mode)
-        if (tx < 76) {                                    // previous page, wraps
+        if (tx >= PREV_X && tx < PREV_X + BTN_W) {       // previous page, wraps
             page = page > 0 ? page - 1 : Math.max(0, Math.ceil(list.length / perPage) - 1);
             draw();
-        } else if (tx >= 80 && tx < 156) {              // next page, wraps
+        } else if (tx >= NEXT_X && tx < NEXT_X + BTN_W) {   // next page, wraps
             page = (page + 1) * perPage < list.length ? page + 1 : 0;
             draw();
         }
