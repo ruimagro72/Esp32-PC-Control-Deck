@@ -33,6 +33,8 @@ var VW = SW, VH = SH - BAR; // VNC view size on screen
 // the size of this screen (krfb-virtualmonitor + the Java WebSocket bridge) and the app connects to it.
 //   {"virtual": true, "server": "http://10.0.1.3:8080", "token": "...", "encoding": "raw"}
 var VIRT = "";
+// Bearer token for the WebSocket bridge (vnc.json "token"); "" = send no Authorization header.
+var WS_TOKEN = "";
 (function () {
     var f = null;
     // Per-app paths descriptor (app.json -> paths): data dir of the mutable vnc.json.
@@ -41,6 +43,7 @@ var VIRT = "";
     var VNC_JSON = PATHS.data ? PATHS.data + "/vnc.json" : null;
     if (VNC_JSON) { try { f = JSON.parse(FS.readTextFile(VNC_JSON)); } catch (e) {} }
     if (!f) return;
+    WS_TOKEN = f.token ? String(f.token) : "";
     for (var k in f) if (CFG.hasOwnProperty(k)) CFG[k] = f[k];
     if (!f.virtual || !f.server || !f.token) return;
     var r = Network.post(f.server + "/api/vmonitor", JSON.stringify({ resolution: VW + "x" + VH }),
@@ -502,7 +505,9 @@ function viewChanged() {
 function connect() {
     var url = "ws://" + CFG.host + ":" + CFG.port + "/";
     console.log("[vnc] connecting " + url);
-    ws = new WebSocket(url, "binary");
+    var wsOpts = { protocol: "binary" };
+    if (WS_TOKEN) wsOpts.headers = { "Authorization": "Bearer " + WS_TOKEN };
+    ws = new WebSocket(url, wsOpts);
     ws.binaryType = "arraybuffer";   // native side gives binary frames as Uint8Array
     ws.onopen = function () {
         console.log("[vnc] websocket open");

@@ -1,5 +1,6 @@
 #include "profile.h"
 #include "config.h"
+#include "launcher_path.h"
 
 #include <ctype.h>
 #include <errno.h>
@@ -36,9 +37,6 @@ static bool file_exists(const char *path) {
     return stat(path, &st) == 0;
 }
 
-static bool is_abs_path(const char *p) {
-    return p && p[0] == '/';
-}
 
 /* ---------- diagnostics ---------- */
 
@@ -84,6 +82,11 @@ void sim_profile_init(sim_profile_t *p) {
     memset(p, 0, sizeof(*p));
     p->board_hardware.display.hw_rotation = -1;
     p->board_hardware.cosim.tcp_port = 0;
+    p->board_hardware.battery.present = 1;
+    p->board_hardware.battery.capacity_mah = 1000;      /* PLACEHOLDER */
+    p->board_hardware.battery.initial_percent = 75;
+    p->board_hardware.battery.charge_current_ma = 500;  /* PLACEHOLDER */
+    p->board_hardware.battery.time_scale = 1;
     p->emu_runtime.timeout_sec = -1;
     p->ui_state.scale = 1.0;
     p->extensions_json = NULL;
@@ -478,6 +481,42 @@ static bool parse_touch(jcur_t *c, sim_profile_touch_t *t) {
     }
 }
 
+static bool parse_battery_ma(jcur_t *c, sim_profile_battery_t *b) {
+    if (!jexpect_obj_start(c)) return false;
+    jskip_ws(c); if (jconsume(c,'}')) return true;
+    for (;;) {
+        char *k=jparse_string(c); if(!k) return false; if(!jconsume(c,':')){free(k);return false;}
+        if (strcmp(k,"base")==0) { if(!jparse_int(c,&b->ma_base)){free(k);return false;} }
+        else if (strcmp(k,"wifi")==0) { if(!jparse_int(c,&b->ma_wifi)){free(k);return false;} }
+        else if (strcmp(k,"ble")==0) { if(!jparse_int(c,&b->ma_ble)){free(k);return false;} }
+        else if (strcmp(k,"backlight_full")==0) { if(!jparse_int(c,&b->ma_backlight)){free(k);return false;} }
+        else if (strcmp(k,"audio")==0) { if(!jparse_int(c,&b->ma_audio)){free(k);return false;} }
+        else { if(!jskip_value(c)){free(k);return false;} }
+        free(k);
+        jskip_ws(c); if (jconsume(c,'}')) return true; if(!jconsume(c,',')) return false;
+    }
+}
+
+static bool parse_battery(jcur_t *c, sim_profile_battery_t *b) {
+    if (!jexpect_obj_start(c)) return false;
+    b->configured = 1;
+    jskip_ws(c); if (jconsume(c,'}')) return true;
+    for (;;) {
+        char *k=jparse_string(c); if(!k) return false; if(!jconsume(c,':')){free(k);return false;}
+        bool bv = false;
+        if (strcmp(k,"present")==0) { if(!jparse_bool(c,&bv)){free(k);return false;} b->present = bv; }
+        else if (strcmp(k,"capacity_mah")==0) { if(!jparse_int(c,&b->capacity_mah)){free(k);return false;} }
+        else if (strcmp(k,"initial_percent")==0) { if(!jparse_int(c,&b->initial_percent)){free(k);return false;} }
+        else if (strcmp(k,"charging")==0) { if(!jparse_bool(c,&bv)){free(k);return false;} b->charging = bv; }
+        else if (strcmp(k,"charge_current_ma")==0) { if(!jparse_int(c,&b->charge_current_ma)){free(k);return false;} }
+        else if (strcmp(k,"time_scale")==0) { if(!jparse_int(c,&b->time_scale)){free(k);return false;} }
+        else if (strcmp(k,"consumption_ma")==0) { if(!parse_battery_ma(c,b)){free(k);return false;} }
+        else { if(!jskip_value(c)){free(k);return false;} }
+        free(k);
+        jskip_ws(c); if (jconsume(c,'}')) return true; if(!jconsume(c,',')) return false;
+    }
+}
+
 static bool parse_cosim(jcur_t *c, sim_profile_cosim_t *cs) {
     if (!jexpect_obj_start(c)) return false;
     jskip_ws(c); if (jconsume(c,'}')) return true;
@@ -525,6 +564,7 @@ static bool parse_board_hardware(jcur_t *c, sim_profile_board_hw_t *b) {
         else if (strcmp(k,"mcu")==0) { if(!parse_mcu(c,&b->mcu)){free(k);return false;} }
         else if (strcmp(k,"display")==0) { if(!parse_display(c,&b->display)){free(k);return false;} }
         else if (strcmp(k,"touch")==0) { if(!parse_touch(c,&b->touch)){free(k);return false;} }
+        else if (strcmp(k,"battery")==0) { if(!parse_battery(c,&b->battery)){free(k);return false;} }
         else if (strcmp(k,"cosim")==0) { if(!parse_cosim(c,&b->cosim)){free(k);return false;} }
         else { if(!jskip_value(c)){free(k);return false;} }
         free(k);
@@ -888,6 +928,13 @@ int sim_profile_save_json(const sim_profile_t *p, const char *profile_path, sim_
         else json_escape(f, pn->value);
     }
     fprintf(f, "%s}, \"calibration\": {} },\n", p->board_hardware.touch.pin_count ? " " : "");
+    if (p->board_hardware.battery.configured) {
+        const sim_profile_battery_t *bt = &p->board_hardware.battery;
+        fprintf(f, "    \"battery\": { \"present\": %s, \"capacity_mah\": %d, \"initial_percent\": %d, \"charging\": %s, \"charge_current_ma\": %d, \"time_scale\": %d, "
+                   "\"consumption_ma\": { \"base\": %d, \"wifi\": %d, \"ble\": %d, \"backlight_full\": %d, \"audio\": %d } },\n",
+                bt->present ? "true" : "false", bt->capacity_mah, bt->initial_percent, bt->charging ? "true" : "false",
+                bt->charge_current_ma, bt->time_scale, bt->ma_base, bt->ma_wifi, bt->ma_ble, bt->ma_backlight, bt->ma_audio);
+    }
     fprintf(f, "    \"buses_pins\": {},\n");
     fprintf(f, "    \"cosim\": { \"mode\": "); json_escape(f,p->board_hardware.cosim.mode[0]?p->board_hardware.cosim.mode:"board_json");
     fprintf(f, ", \"board_json\": "); if(p->board_hardware.cosim.board_json[0]) json_escape(f,p->board_hardware.cosim.board_json); else fputs("null",f);
@@ -988,6 +1035,20 @@ int sim_profile_validate(const sim_profile_t *p, const char *base_dir_for_paths,
         sim_profile_diags_add(diags, SIM_PROFILE_DIAG_ERROR, "board_hardware.display.orientation", "must be 0-3");
     if (p->board_hardware.display.hw_rotation < -1 || p->board_hardware.display.hw_rotation > 3)
         sim_profile_diags_add(diags, SIM_PROFILE_DIAG_ERROR, "board_hardware.display.overrides.hw_rotation", "must be 0-3");
+    if (p->board_hardware.battery.configured) {
+        const sim_profile_battery_t *bt = &p->board_hardware.battery;
+        if (bt->initial_percent < 0 || bt->initial_percent > 100)
+            sim_profile_diags_add(diags, SIM_PROFILE_DIAG_ERROR, "board_hardware.battery.initial_percent", "must be 0-100");
+        if (bt->capacity_mah < 50 || bt->capacity_mah > 20000)
+            sim_profile_diags_add(diags, SIM_PROFILE_DIAG_ERROR, "board_hardware.battery.capacity_mah", "must be 50-20000");
+        if (bt->time_scale < 1 || bt->time_scale > 255)
+            sim_profile_diags_add(diags, SIM_PROFILE_DIAG_ERROR, "board_hardware.battery.time_scale", "must be 1-255");
+        if (bt->charge_current_ma < 0 || bt->charge_current_ma > 3000)
+            sim_profile_diags_add(diags, SIM_PROFILE_DIAG_ERROR, "board_hardware.battery.charge_current_ma", "must be 0-3000");
+        if (bt->ma_base < 0 || bt->ma_base > 5000 || bt->ma_wifi < 0 || bt->ma_wifi > 5000 || bt->ma_ble < 0 || bt->ma_ble > 5000 ||
+            bt->ma_backlight < 0 || bt->ma_backlight > 5000 || bt->ma_audio < 0 || bt->ma_audio > 5000)
+            sim_profile_diags_add(diags, SIM_PROFILE_DIAG_ERROR, "board_hardware.battery.consumption_ma", "each value must be 0-5000");
+    }
     if (p->ui_state.scale < 1.0 || p->ui_state.scale > 4.0)
         sim_profile_diags_add(diags, SIM_PROFILE_DIAG_WARNING, "ui_state.scale", "recommended range 1-4");
     if (!p->firmware.selection[0]) sim_profile_diags_add(diags, SIM_PROFILE_DIAG_ERROR, "firmware.selection", "required");
@@ -1009,7 +1070,7 @@ int sim_profile_validate(const sim_profile_t *p, const char *base_dir_for_paths,
         const char *fld = paths[i][0]; const char *val = paths[i][1];
         if (!val || !val[0]) continue;
         char resolved[PATH_MAX];
-        if (base_dir_for_paths && !is_abs_path(val)) sim_profile_resolve_path(base_dir_for_paths, val, resolved, sizeof(resolved));
+        if (base_dir_for_paths && !launcher_is_abs_path(val)) sim_profile_resolve_path(base_dir_for_paths, val, resolved, sizeof(resolved));
         else sset(resolved, sizeof(resolved), val);
         if (!file_exists(resolved)) {
             sim_profile_diag_level_t lvl = SIM_PROFILE_DIAG_WARNING;
@@ -1026,7 +1087,7 @@ int sim_profile_resolve_path(const char *base_dir, const char *in, char *out, si
     if (!out || outsz == 0) return -1;
     out[0] = '\0';
     if (!in || !in[0]) return 0;
-    if (is_abs_path(in) || !base_dir || !base_dir[0]) {
+    if (launcher_is_abs_path(in) || !base_dir || !base_dir[0]) {
         if (snprintf(out, outsz, "%s", in) >= (int)outsz) return -1;
         return 0;
     }
@@ -1040,7 +1101,7 @@ int sim_profile_resolve_path(const char *base_dir, const char *in, char *out, si
 int sim_profile_relativize_path(const char *base_dir, const char *in, char *out, size_t outsz) {
     if (!out || outsz == 0) return -1;
     if (!in) { out[0]='\0'; return 0; }
-    if (!base_dir || !base_dir[0] || !is_abs_path(in)) {
+    if (!base_dir || !base_dir[0] || !launcher_is_abs_path(in)) {
         if (snprintf(out, outsz, "%s", in) >= (int)outsz) return -1;
         return 0;
     }
@@ -1076,6 +1137,15 @@ void sim_profile_from_launcher_config(sim_profile_t *p, const launcher_config_t 
     sset(p->firmware.artifacts.elf, sizeof(p->firmware.artifacts.elf), cfg->elf_path);
     p->firmware.artifacts.use_elf = cfg->use_elf;
 
+    {
+        sim_profile_battery_t *bt = &p->board_hardware.battery;
+        bt->configured = cfg->battery.configured; bt->present = cfg->battery.present;
+        bt->capacity_mah = cfg->battery.capacity_mah; bt->initial_percent = cfg->battery.initial_percent;
+        bt->charging = cfg->battery.charging; bt->charge_current_ma = cfg->battery.charge_current_ma;
+        bt->time_scale = cfg->battery.time_scale;
+        bt->ma_base = cfg->battery.ma_base; bt->ma_wifi = cfg->battery.ma_wifi; bt->ma_ble = cfg->battery.ma_ble;
+        bt->ma_backlight = cfg->battery.ma_backlight; bt->ma_audio = cfg->battery.ma_audio;
+    }
     p->audio.enabled = cfg->audio;
     p->storage.card_enabled = cfg->sd_enabled;
     sset(p->storage.card_image_path, sizeof(p->storage.card_image_path), cfg->sd_image_path);
@@ -1112,6 +1182,15 @@ void sim_profile_to_launcher_config(const sim_profile_t *p, launcher_config_t *c
     cfg->instance = p->emu_runtime.instance;
     sset(cfg->extra_args, sizeof(cfg->extra_args), p->emu_runtime.extra_args);
     cfg->net_user = p->network_radio.net_user;
+    {
+        const sim_profile_battery_t *bt = &p->board_hardware.battery;
+        cfg->battery.configured = bt->configured; cfg->battery.present = bt->present;
+        cfg->battery.capacity_mah = bt->capacity_mah; cfg->battery.initial_percent = bt->initial_percent;
+        cfg->battery.charging = bt->charging; cfg->battery.charge_current_ma = bt->charge_current_ma;
+        cfg->battery.time_scale = bt->time_scale;
+        cfg->battery.ma_base = bt->ma_base; cfg->battery.ma_wifi = bt->ma_wifi; cfg->battery.ma_ble = bt->ma_ble;
+        cfg->battery.ma_backlight = bt->ma_backlight; cfg->battery.ma_audio = bt->ma_audio;
+    }
     cfg->audio = p->audio.enabled;
     cfg->sd_enabled = p->storage.card_enabled;
     sset(cfg->sd_image_path, sizeof(cfg->sd_image_path), p->storage.card_image_path); /* "" stays "" (no default leak) */

@@ -124,6 +124,31 @@
           },
           "description": "Touch hardware config."
         },
+        "battery": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Simulated battery model (es3c28p, firmware-side model fed through an esp-emu I2C register file). Capacity and charge current defaults are PLACEHOLDERS, not hardware figures. Voltage is a linear estimate from the charge percentage. Optional: when absent the firmware keeps its fixed stub values.",
+          "properties": {
+            "present": { "type": "boolean", "default": true, "description": "false = board without battery (0 V, 0 %)." },
+            "capacity_mah": { "type": "integer", "minimum": 50, "maximum": 20000, "default": 1000, "description": "Battery capacity in mAh. PLACEHOLDER default, not a hardware figure." },
+            "initial_percent": { "type": "integer", "minimum": 0, "maximum": 100, "default": 75, "description": "Charge level at boot, percent." },
+            "charging": { "type": "boolean", "default": false, "description": "Charger connected at boot." },
+            "charge_current_ma": { "type": "integer", "minimum": 0, "maximum": 3000, "default": 500, "description": "Charge current in mA. PLACEHOLDER default, not a hardware figure." },
+            "time_scale": { "type": "integer", "minimum": 1, "maximum": 255, "default": 1, "description": "The model runs this many times faster than emulated time." },
+            "consumption_ma": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "Load per consumer in mA. 0 = firmware default (base 45, wifi 70: PLACEHOLDER figures copied from the KryonOS T-Deck estimate, not ES3C28P data; others 0).",
+              "properties": {
+                "base": { "type": "integer", "minimum": 0, "maximum": 5000, "default": 0 },
+                "wifi": { "type": "integer", "minimum": 0, "maximum": 5000, "default": 0 },
+                "ble": { "type": "integer", "minimum": 0, "maximum": 5000, "default": 0 },
+                "backlight_full": { "type": "integer", "minimum": 0, "maximum": 5000, "default": 0 },
+                "audio": { "type": "integer", "minimum": 0, "maximum": 5000, "default": 0 }
+              }
+            }
+          }
+        },
         "buses_pins": {
           "type": "object",
           "additionalProperties": true,

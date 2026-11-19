@@ -121,6 +121,15 @@ int sim_ports_for_instance(int instance, sim_ports_t *out) {
     return ok ? 0 : -1;
 }
 
+static void battery_defaults(launcher_battery_t *b) {
+    memset(b, 0, sizeof(*b));
+    b->present = 1;
+    b->capacity_mah = 1000;     /* PLACEHOLDER, not a hardware figure */
+    b->initial_percent = 75;
+    b->charging = 0;
+    b->charge_current_ma = 500; /* PLACEHOLDER, not a hardware figure */
+    b->time_scale = 1;
+}
 void launcher_config_defaults(launcher_config_t *cfg) {
     if (!cfg) return;
     memset(cfg, 0, sizeof(*cfg));
@@ -151,6 +160,7 @@ void launcher_config_defaults(launcher_config_t *cfg) {
     cfg->sd_enabled = true;
     set_str(cfg->sd_image_path, sizeof(cfg->sd_image_path), LAUNCHER_SD_DEFAULT_IMAGE);
     set_str(cfg->sd_dir, sizeof(cfg->sd_dir), "");
+    battery_defaults(&cfg->battery);
     cfg->run_mode = 0;
     cfg->cosim_use_unix = false;
     set_str(cfg->cosim_unix_path, sizeof(cfg->cosim_unix_path), "");
@@ -202,6 +212,34 @@ int launcher_config_sd_tail_args(const launcher_config_t *cfg, char *buf, size_t
         n = snprintf(buf, buflen, " --sd %s", quoted);
         if (n < 0 || (size_t)n >= buflen) return -1;
     }
+    return 0;
+}
+
+int launcher_config_battery_arg(const launcher_config_t *cfg, char *buf, size_t len) {
+    if (!cfg || !buf || len < 2) return -1;
+    buf[0] = '\0';
+    if (!cfg->battery.configured || cfg->board != LAUNCHER_BOARD_ES3C28P) return 1;
+    const launcher_battery_t *b = &cfg->battery;
+    unsigned flags = (b->present ? 1u : 0u) | (b->charging ? 2u : 0u);
+    unsigned cap = (unsigned)clamp_int(b->capacity_mah, 0, 65535);
+    unsigned chg = (unsigned)clamp_int(b->charge_current_ma, 0, 65535);
+    unsigned ma[5] = {
+        (unsigned)clamp_int(b->ma_base, 0, 65535), (unsigned)clamp_int(b->ma_wifi, 0, 65535),
+        (unsigned)clamp_int(b->ma_ble, 0, 65535), (unsigned)clamp_int(b->ma_backlight, 0, 65535),
+        (unsigned)clamp_int(b->ma_audio, 0, 65535)
+    };
+    int n = snprintf(buf, len,
+        "--i2c-dev 0:0x5B,fill=0,reg=0x00=0xB7,reg=0x01=0x%02X,reg=0x02=0x%02X,reg=0x03=0x%02X,"
+        "reg=0x04=0x%02X,reg=0x05=0x%02X,reg=0x06=0x%02X,reg=0x07=0x%02X,"
+        "reg=0x10=0x%02X,reg=0x11=0x%02X,reg=0x12=0x%02X,reg=0x13=0x%02X,"
+        "reg=0x14=0x%02X,reg=0x15=0x%02X,reg=0x16=0x%02X,reg=0x17=0x%02X,"
+        "reg=0x18=0x%02X,reg=0x19=0x%02X",
+        flags, cap & 0xFF, cap >> 8,
+        (unsigned)clamp_int(b->initial_percent, 0, 100), (unsigned)clamp_int(b->time_scale, 1, 255),
+        chg & 0xFF, chg >> 8,
+        ma[0] & 0xFF, ma[0] >> 8, ma[1] & 0xFF, ma[1] >> 8, ma[2] & 0xFF, ma[2] >> 8,
+        ma[3] & 0xFF, ma[3] >> 8, ma[4] & 0xFF, ma[4] >> 8);
+    if (n < 0 || (size_t)n >= len) { buf[0] = '\0'; return -1; }
     return 0;
 }
 
@@ -327,6 +365,10 @@ int launcher_config_save(const launcher_config_t *cfg, const char *path) {
     fprintf(f, "sd_enabled=%d\n", cfg->sd_enabled ? 1 : 0);
     fprintf(f, "sd_image_path=%s\n", cfg->sd_image_path);
     fprintf(f, "sd_dir=%s\n", cfg->sd_dir);
+    /* SD model hints (not part of the profile, not sent to esp-emu) */
+    fprintf(f, "sd_mode=%s\n", slfs_sd_mode_str(cfg->storage.sd.mode));
+    fprintf(f, "sd_slot=%d\n", cfg->storage.sd.slot);
+    fprintf(f, "sd_cs=%d\n", cfg->storage.sd.cs_pin);
     /* T20 storage (LittleFS) */
     fprintf(f, "littlefs_enabled=%d\n", cfg->storage.littlefs.enabled ? 1 : 0);
     fprintf(f, "littlefs_image=%s\n", cfg->storage.littlefs.image_path);
@@ -445,6 +487,12 @@ int launcher_config_load(launcher_config_t *cfg, const char *path) {
             if (val[0]) set_str(cfg->sd_image_path, sizeof(cfg->sd_image_path), val);
         } else if (strcmp(key, "sd_dir") == 0) {
             set_str(cfg->sd_dir, sizeof(cfg->sd_dir), val);
+        } else if (strcmp(key, "sd_mode") == 0) {
+            slfs_sd_mode_t m; if (slfs_sd_mode_from_str(val, &m) == 0) cfg->storage.sd.mode = m;
+        } else if (strcmp(key, "sd_slot") == 0) {
+            cfg->storage.sd.slot = clamp_int(atoi(val), -1, 15);
+        } else if (strcmp(key, "sd_cs") == 0) {
+            cfg->storage.sd.cs_pin = clamp_int(atoi(val), -1, 48);
         } else if (strcmp(key, "littlefs_enabled") == 0) {
             cfg->storage.littlefs.enabled = (atoi(val) != 0);
         } else if (strcmp(key, "littlefs_image") == 0) {

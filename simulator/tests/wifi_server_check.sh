@@ -47,7 +47,7 @@ VAR="$LOGS/wifi-check-var"; rm -rf "$VAR"; mkdir -p "$VAR"
 cp "$SIM/emu/storage/sd.img" "$LOGS/wifi-sd.img"          # throwaway copy of the card
 
 start_server() {
-    CONTROL_DECK_VAR="$VAR" CONTROL_DECK_WIFI=1 java -jar "$JAR" --bind 0.0.0.0 --port "$SPORT" >>"$LOGS/wifi-server.log" 2>&1 & SPID=$!
+    CONTROL_DECK_VAR="$VAR" CONTROL_DECK_WIFI=1 CONTROL_DECK_COUNT_LOOPBACK_PEERS=1 java -jar "$JAR" --bind 0.0.0.0 --port "$SPORT" >>"$LOGS/wifi-server.log" 2>&1 & SPID=$!
     for i in $(seq 1 30); do curl -s -o /dev/null "http://127.0.0.1:$SPORT/" && break; sleep 1; done
 }
 : >"$LOGS/wifi-server.log"

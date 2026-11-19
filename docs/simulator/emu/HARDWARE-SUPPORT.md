@@ -39,11 +39,11 @@ Merged image for the es3c28p preset: bootloader at 0x0, partitions at 0x8000, ap
 | LCD ILI9341 over SPI | usable | cosim client over `--cosim-tcp` | Pins: CS 10, DC 46, SCLK 12, MOSI 11, MISO 13, BL 45. Panel 240x320, mirror X on. Read replies are zero-filled (up to 4096 bytes). |
 | Touch FT6336 (I2C 0x38) | usable | cosim client (host answers the bus) | Pins: SDA 16, SCL 15, INT 17, RST 18. See the claim note below. |
 | I2S audio | partial | `--i2s-wav FILE` (out), `--i2s-wav-in FILE` (in) | `ui` records `simulator/logs/i2s_out.wav` unless `--no-audio`. Real-time PCM not validated. |
-| Wi-Fi 2.4 GHz | unverified | `--net user`, `--wifi-ssid/--wifi-password/--wifi-auth`, `--hostfwd` | Guest network is emulated. Scan and internet connectivity may not match a real network. |
+| Wi-Fi 2.4 GHz | unverified | `--net user`, `--wifi-ssid/--wifi-password/--wifi-auth`, `--hostfwd` | Guest network is emulated. A scan returns the single AP configured by `--wifi-ssid`/`--wifi-auth` (profile SSID and auth); esp-emu cannot switch that AP off (a profile with `wifi.enabled=false` still shows the default `myssid`). Internet connectivity may not match a real network. |
 | Bluetooth LE | unverified | `--elf firmware.elf --ble-hci tcp:HOST:PORT` | BLE hooks are reported with an ELF; a full BLE workflow is not confirmed. |
 | SD card (SDMMC) | usable | `--sd simulator/emu/storage/sd.img` | SDHC image, FAT32, built by `./start.sh card image` from `simulator/SD_Card`. The firmware mounts `/sd`. Writes go into the image. Options `ro`, `cs=PIN` (SPI mode), `cd=PIN` exist in esp-emu; `start.sh` does not pass them. Removing or swapping the card during a run is not modelled: restart. |
 | LittleFS (internal) | partial | `./start.sh emu merge --littlefs IMG` | Missing or invalid image: mount error, not always blocking. |
-| ADC (battery) | stubbed | `ESP_EMU_SKIP_AUDIO` build | Safe values avoid a watchdog reset at boot. Not a real reading. |
+| Battery | model (placeholders) | profile `board_hardware.battery` -> `--i2c-dev 0:0x5B,...` register file | The firmware (build with `ESP_EMU_SKIP_AUDIO` only) reads the register file and models charge, voltage and estimates. Capacity, charge current and consumption figures are placeholders, not ES3C28P measurements. Without the block the old stub values apply (4.0 V, 75 %). Register map in `docs/simulator/LAUNCHER-HELP.md`. |
 | Debug: GDB, trace, control | unverified | `--gdb PORT`, `--gdb-halt`, `--trace FILE`, `--control-tcp HOST:PORT` | Flags exist in `esp-emu --help`. Useful output needs the ELF. |
 
 ## Claim conflict to check

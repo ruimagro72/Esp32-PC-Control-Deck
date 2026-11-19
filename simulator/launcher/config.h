@@ -40,6 +40,19 @@ typedef enum {
     LAUNCHER_FW_COUNT
 } launcher_firmware_t;
 
+/* Simulated battery parameters (profile board_hardware.battery). Defaults are PLACEHOLDERS, not hardware
+ * figures. configured = 0 means "no battery block": nothing is sent to esp-emu. ma_* = 0 = firmware default. */
+typedef struct {
+    int configured;
+    int present;
+    int capacity_mah;       /* 50..20000 */
+    int initial_percent;    /* 0..100 */
+    int charging;
+    int charge_current_ma;  /* 0..3000 */
+    int time_scale;         /* 1..255 */
+    int ma_base, ma_wifi, ma_ble, ma_backlight, ma_audio; /* 0..5000 */
+} launcher_battery_t;
+
 typedef struct {
     launcher_board_t board;
     launcher_firmware_t firmware;
@@ -65,6 +78,7 @@ typedef struct {
     bool sd_enabled;                          /* default 1; 0 => start.sh emu run --no-sd */
     char sd_image_path[LAUNCHER_MAX_PATH];    /* default LAUNCHER_SD_DEFAULT_IMAGE */
     char sd_dir[LAUNCHER_MAX_PATH];           /* SD card folder synced into sd_image_path on Start; "" = none */
+    launcher_battery_t battery;               /* es3c28p simulated battery, see launcher_config_battery_arg */
     audio_net_config_t audio_net; /* I2S WAV in/out, realtime hint, net/hostfwd/wifi placeholders/ble hci */
     char emu_caps_path[LAUNCHER_MAX_PATH]; /* optional esp-emu binary for caps probe; empty = autodetect */
     int run_mode; /* 0=ui+embedded host, 1=backend-only (--no-host/cosim) */
@@ -109,6 +123,11 @@ typedef struct {
  * tail = after it (" --sd 'path'" only when a non-default image is selected). Both return 0 or -1 (buffer too small). */
 int launcher_config_sd_pre_args(const launcher_config_t *cfg, char *buf, size_t buflen);
 int launcher_config_sd_tail_args(const launcher_config_t *cfg, char *buf, size_t buflen);
+
+/* esp-emu battery register-file argument (no leading space), only for board es3c28p and only when
+ * cfg->battery.configured. Returns 0 and fills buf, or 1 and empties buf (not configured / other board),
+ * or -1 on bad args / buffer too small (buf emptied). The shell emu.sh must produce the identical string. */
+int launcher_config_battery_arg(const launcher_config_t *cfg, char *buf, size_t len);
 
 const char *launcher_board_id(launcher_board_t board);
 const char *launcher_board_dirname(launcher_board_t board);

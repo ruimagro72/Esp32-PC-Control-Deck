@@ -1,5 +1,6 @@
 #define _GNU_SOURCE
 #include "validate.h"
+#include "launcher_path.h"
 #include "config.h"
 #include "i18n.h"
 
@@ -87,14 +88,11 @@ bool validate_path_exists(const char *path) {
     return stat(path, &st) == 0;
 }
 
-static bool is_abs_path(const char *path) {
-    return path && path[0] == '/';
-}
 
 bool validate_path_exists_in_repo(const char *repo_root, const char *path, char *resolved, size_t resolved_len) {
     if (!path || !path[0]) return false;
     char buf[PATH_MAX];
-    if (is_abs_path(path) || !repo_root || !repo_root[0]) {
+    if (launcher_is_abs_path(path) || !repo_root || !repo_root[0]) {
         snprintf(buf, sizeof(buf), "%s", path);
     } else {
         snprintf(buf, sizeof(buf), "%s/%s", repo_root, path);
@@ -179,7 +177,7 @@ static void resolve_repo_path(const char *repo_root, const char *path, char *out
     if (!out || out_len == 0) return;
     out[0] = '\0';
     if (!path || !path[0]) return;
-    if (is_abs_path(path) || !repo_root || !repo_root[0]) {
+    if (launcher_is_abs_path(path) || !repo_root || !repo_root[0]) {
         snprintf(out, out_len, "%s", path);
     } else {
         snprintf(out, out_len, "%s/%s", repo_root, path);
@@ -250,7 +248,7 @@ static void validate_storage_section(const launcher_config_t *cfg, const validat
     slfs_config_t sc_check = sc;
     char resolved[PATH_MAX];
     if (sc_check.littlefs.image_path[0]) {
-        if (is_abs_path(sc_check.littlefs.image_path) || !repo_root || !repo_root[0])
+        if (launcher_is_abs_path(sc_check.littlefs.image_path) || !repo_root || !repo_root[0])
             snprintf(resolved, sizeof(resolved), "%s", sc_check.littlefs.image_path);
         else
             snprintf(resolved, sizeof(resolved), "%s/%s", repo_root, sc_check.littlefs.image_path);
@@ -258,7 +256,7 @@ static void validate_storage_section(const launcher_config_t *cfg, const validat
                  (int)(sizeof(sc_check.littlefs.image_path) - 1), resolved);
     }
     if (sc_check.sd.image_path[0]) {
-        if (is_abs_path(sc_check.sd.image_path) || !repo_root || !repo_root[0])
+        if (launcher_is_abs_path(sc_check.sd.image_path) || !repo_root || !repo_root[0])
             snprintf(resolved, sizeof(resolved), "%s", sc_check.sd.image_path);
         else
             snprintf(resolved, sizeof(resolved), "%s/%s", repo_root, sc_check.sd.image_path);
@@ -316,7 +314,7 @@ static void validate_storage_section(const launcher_config_t *cfg, const validat
     if (cfg->sd_dir[0] && (flags & VALIDATE_CHECK_FILES)) {
         char dir_path[PATH_MAX];
         struct stat dsb;
-        if (is_abs_path(cfg->sd_dir) || !repo_root || !repo_root[0])
+        if (launcher_is_abs_path(cfg->sd_dir) || !repo_root || !repo_root[0])
             snprintf(dir_path, sizeof(dir_path), "%s", cfg->sd_dir);
         else
             snprintf(dir_path, sizeof(dir_path), "%s/%s", repo_root, cfg->sd_dir);

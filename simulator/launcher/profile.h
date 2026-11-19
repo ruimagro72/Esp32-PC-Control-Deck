@@ -86,11 +86,26 @@ typedef struct {
     char unix_path[SIM_PROFILE_MAX_PATH];
 } sim_profile_cosim_t;
 
+/* board_hardware.battery: simulated battery (es3c28p). Defaults are PLACEHOLDERS, not hardware figures.
+ * configured = 1 only when the JSON block exists or the launcher UI edited it; the writer emits it only then.
+ * ma_* = 0 means "firmware default". */
+typedef struct {
+    int configured;
+    int present;
+    int capacity_mah;
+    int initial_percent;
+    int charging;
+    int charge_current_ma;
+    int time_scale;
+    int ma_base, ma_wifi, ma_ble, ma_backlight, ma_audio;
+} sim_profile_battery_t;
+
 typedef struct {
     char board_id[SIM_PROFILE_MAX_SHORT];
     sim_profile_mcu_t mcu;
     sim_profile_display_t display;
     sim_profile_touch_t touch;
+    sim_profile_battery_t battery;
     sim_profile_cosim_t cosim;
 } sim_profile_board_hw_t;
 

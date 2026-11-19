@@ -12,14 +12,10 @@ sources=(
   "simulator/launcher/sim_launcher.c"
 )
 
-# Include other launcher modules (config/proc/profile/firmware_mgr/validate/board_catalog, etc.)
-shopt -s nullglob
-for src in "$SCRIPT_DIR"/*.c; do
-  base="$(basename "$src")"
-  [[ "$base" == "sim_launcher.c" ]] && continue
-  sources+=("simulator/launcher/$base")
+# Launcher modules (explicit list; add new .c files here)
+for m in audio_net board_catalog config console_log emu_caps_probe firmware_mgr help_ui i18n parts_ui proc profile storage_littlefs telemetry theme validate; do
+  sources+=("simulator/launcher/$m.c")
 done
-shopt -u nullglob
 
 # Embedded sim host (cosim + SDL canvas) when available
 if [[ -f "simulator/emu/sim_host.c" ]]; then

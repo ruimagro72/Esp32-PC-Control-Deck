@@ -97,6 +97,11 @@ struct SimHost {
     int board_idx;
     int view_rot;
     int hw_rot;
+    int boot_rot;              /* rotation at start; what touch reg 0xF1 reports (hw_rot follows the firmware MADCTL) */
+    bool follow_madctl;        /* es3c28p: follow firmware MADCTL rotation at run time */
+    bool rot_changed;          /* hw_rot changed at run time; render thread rebuilds texture (under lock) */
+    int bl_pin;                /* backlight GPIO, from the profile display.pins.bl */
+    int bl_duty_256;           /* backlight level 0..256 (under lock) */
     int mirror_x;
     int mirror_y;
     int touch_swap_xy;
@@ -256,6 +261,7 @@ void sim_host_set_display(SimHost *host, int lcd_w, int lcd_h, int scale, int hw
     if (lcd_h > 0) host->panel_native_h = clampi(lcd_h, 1, LCD_MAX_H);
     if (scale > 0) host->scale = scale;
     host->hw_rot = hw_rot & 3;
+    host->boot_rot = host->hw_rot;
     host_update_capability_summary(host);
 }
 
@@ -280,7 +286,7 @@ static void host_touch_update_regs(SimHost *h) {
     h->touch_regs[0xA6] = 0x11;
     h->touch_regs[0xA8] = 0x11;
     h->touch_regs[0xAF] = 0x00;
-    h->touch_regs[0xF1] = (uint8_t)(h->hw_rot & 3);
+    h->touch_regs[0xF1] = (uint8_t)(h->boot_rot & 3);
     if (h->touch_down) {
         h->touch_regs[0x02] = 1;
         h->touch_regs[0x03] = (0x02 << 6) | ((h->touch_x >> 8) & 0x0F);
@@ -542,6 +548,12 @@ bool sim_host_load_board_profile(SimHost *host, const char *id_or_path) {
         if (json_get_bool_range(disp, disp_end, "mirror_x", &b)) host->mirror_x = b ? 1 : 0;
         if (json_get_bool_range(disp, disp_end, "mirror_y", &b)) host->mirror_y = b ? 1 : 0;
         int rd = 0; if (json_get_int_range(disp, disp_end, "rotation_default", &rd)) host->hw_rot = rd & 3;
+        {
+            const char *pins_end = NULL;
+            const char *pins = json_find_object(disp, "pins", &pins_end);
+            int blp = 0;
+            if (pins && pins_end <= disp_end && json_get_int_range(pins, pins_end, "bl", &blp) && blp >= 0 && blp < 64) host->bl_pin = blp;
+        }
         json_get_string_range(disp, disp_end, "bus", disp_bus, sizeof(disp_bus));
         json_get_string_range(disp, disp_end, "controller", disp_ctrl, sizeof(disp_ctrl));
         json_get_string_range(disp, disp_end, "panel", disp_panel, sizeof(disp_panel));
@@ -916,6 +928,22 @@ static void host_lcd_flush_args(SimHost *h) {
         memmove(h->lcd_args, h->lcd_args+4, h->lcd_args_len-4); h->lcd_args_len -= 4;
     } else if (h->lcd_cmd == 0x36 && h->lcd_args_len >= 1) {
         h->madctl = h->lcd_args[0];
+        if (h->follow_madctl) {
+            int nr = -1;
+            switch (h->madctl & 0xE0) { case 0x40: nr = 0; break; case 0x20: nr = 1; break; case 0x80: nr = 2; break; case 0xE0: nr = 3; break; default: break; }
+            if (nr >= 0 && nr != h->hw_rot) {
+                SDL_LockMutex(h->lock);
+                h->hw_rot = nr;
+                memset(h->fb565, 0, sizeof(h->fb565));
+                h->xs = 0; h->xe = host_panel_w(h) - 1; h->ys = 0; h->ye = host_panel_h(h) - 1; h->cx = 0; h->cy = 0;
+                h->have_odd = false;
+                h->rot_changed = true; h->fb_dirty = true;
+                SDL_UnlockMutex(h->lock);
+                sim_host_save_state(h);
+                fprintf(stderr, "[sim] hw rotation -> %d (firmware)\n", nr);
+                fflush(stderr);
+            }
+        }
         memmove(h->lcd_args, h->lcd_args+1, h->lcd_args_len-1); h->lcd_args_len -= 1;
     } else if (h->lcd_cmd == 0x3A && h->lcd_args_len >= 1) {
         memmove(h->lcd_args, h->lcd_args+1, h->lcd_args_len-1); h->lcd_args_len -= 1;
@@ -1053,13 +1081,15 @@ static bool host_do_register(SimHost *h) {
     enc_msg_field(&i2c_claim_msg,&i2l,&i2c2,2,i2c,il);
 
     uint64_t watch = 0;
-    int wpins[] = {LCD_DC, TOUCH_RST, LCD_BL};
-    for (int i=0;i<3;i++) if (wpins[i]>=0) watch |= (1ULL<<wpins[i]);
+    int wpins[] = {LCD_DC, TOUCH_RST};
+    for (int i=0;i<2;i++) if (wpins[i]>=0) watch |= (1ULL<<wpins[i]);
     uint64_t drive = 0;
     if (TOUCH_INT >= 0) drive |= (1ULL<<TOUCH_INT);
     uint8_t *gpio=NULL; size_t gl=0,gc=0;
     enc_varint_field(&gpio,&gl,&gc,1,drive);
     enc_varint_field(&gpio,&gl,&gc,2,watch);
+    /* backlight pin as PWM pin: esp-emu sends PwmState (envelope field 12) for it */
+    if (h->bl_pin >= 0 && h->bl_pin < 64) enc_varint_field(&gpio,&gl,&gc,3,1ULL<<h->bl_pin);
     uint8_t *gpio_claim_msg=NULL; size_t gcl=0,gcc=0;
     enc_msg_field(&gpio_claim_msg,&gcl,&gcc,1,gpio,gl);
 
@@ -1124,7 +1154,7 @@ static int host_net_thread(void *arg) {
             bool interesting = (strcmp(topic,"ROUTER")==0 || topic[0]=='@' || strncmp(topic,"HW/",3)==0);
             if (strcmp(topic,"ROUTER")==0 || strncmp(topic,"HW/",3)==0 || strcmp(topic,"SIM/RESET")==0 || strcmp(topic,"SIM/CLOCK")==0 || topic[0]=='@') {
                 if (strcmp(topic,"SIM/RESET")==0) {
-                    SDL_LockMutex(h->lock); memset(h->fb565,0,sizeof(h->fb565)); h->fb_dirty=true; SDL_UnlockMutex(h->lock);
+                    SDL_LockMutex(h->lock); memset(h->fb565,0,sizeof(h->fb565)); h->fb_dirty=true; h->bl_duty_256=256; SDL_UnlockMutex(h->lock);
                 }
                 {
                     size_t i = 0;
@@ -1139,6 +1169,28 @@ static int host_net_thread(void *arg) {
                         const uint8_t *sub = payload + i; size_t sl = (size_t)n; i += sl;
 
                         if (num == 5) { fprintf(stderr, "[cosim] register ack received\n"); continue; }
+                        if (num == 12 || num == 3) {
+                            /* 12 = PwmState {pin, period_ns, high_ns}; 3 = GpioLevel {pin, level} */
+                            uint64_t bpin = 0, per = 0, hi = 0, lvl = 0; size_t j = 0;
+                            while (j < sl) {
+                                uint64_t t2; if (!read_varint(sub, sl, &j, &t2)) break;
+                                uint32_t n2 = (uint32_t)(t2 >> 3), w2 = (uint32_t)(t2 & 7);
+                                if (w2 != 0) break;
+                                uint64_t v2; if (!read_varint(sub, sl, &j, &v2)) break;
+                                if (n2 == 1) bpin = v2;
+                                else if (n2 == 2) { if (num == 12) per = v2; else lvl = v2; }
+                                else if (n2 == 3 && num == 12) hi = v2;
+                            }
+                            if ((int)bpin == h->bl_pin) {
+                                int d = (num == 12) ? (per ? (int)(hi * 256 / per) : (hi ? 256 : 0)) : (lvl ? 256 : 0);
+                                if (d > 256) d = 256;
+                                SDL_LockMutex(h->lock);
+                                int old = h->bl_duty_256; h->bl_duty_256 = d;
+                                SDL_UnlockMutex(h->lock);
+                                if (h->debug && old != d) { fprintf(stderr, "[sim] backlight %d/256\n", d); fflush(stderr); }
+                            }
+                            continue;
+                        }
                         field_t sf2, sf3;
                         bool has_i2c = find_field(sub, sl, 2, &sf2) && sf2.wire == 2;
                         bool has_spi = find_field(sub, sl, 3, &sf3) && sf3.wire == 2;
@@ -1324,6 +1376,7 @@ SimHost *sim_host_create(const SimHostConfig *cfg) {
     h->sock = -1;
     h->running = true;
     h->board_idx = 0; h->view_rot = 0;
+    h->bl_pin = LCD_BL; h->bl_duty_256 = 256;
     host_apply_board_defaults(h);
     sim_host_load_state(h); /* may set board_profile token from state file */
     if (h->have_board_profile && h->board_profile[0]) {
@@ -1337,6 +1390,8 @@ SimHost *sim_host_create(const SimHostConfig *cfg) {
     if (cfg->scale > 0) h->scale = cfg->scale;
     /* hw_rot/mirror/touch kept from profile+state; main reapplies explicit CLI/env fields. */
     if (cfg->hw_rot) h->hw_rot = cfg->hw_rot & 3;
+    h->boot_rot = h->hw_rot;
+    h->follow_madctl = (strcmp(h->board_id, "es3c28p") == 0);
     host_update_capability_summary(h);
     host_touch_update_regs(h);
     reset_lcd_state(h);
@@ -1469,8 +1524,22 @@ bool sim_host_render(SimHost *host) {
     bool tdown = host->touch_down;
     int tdx = host->touch_dx, tdy = host->touch_dy;
     int pw = host_panel_w(host), ph = host_panel_h(host);
-    if (dirty) SDL_UpdateTexture(host->tex, NULL, host->fb565, pw * sizeof(uint16_t));
+    int bl = host->bl_duty_256;
+    bool rot_changed = host->rot_changed; host->rot_changed = false;
+    if (rot_changed) {
+        /* firmware changed rotation: new texture size, empty frame (the firmware repaints) */
+        SDL_DestroyTexture(host->tex);
+        host->tex = SDL_CreateTexture(host->ren, SDL_PIXELFORMAT_RGB565, SDL_TEXTUREACCESS_STREAMING, pw, ph);
+        dirty = true;
+    }
+    if (host->tex && dirty) SDL_UpdateTexture(host->tex, NULL, host->fb565, pw * sizeof(uint16_t));
     SDL_UnlockMutex(host->lock);
+    if (!host->tex) { fprintf(stderr, "SDL_CreateTexture: %s\n", SDL_GetError()); return false; }
+    if (rot_changed && host->owns_window && host->win) {
+        int nw = host_view_w(host) * host->scale, nh = host_view_h(host) * host->scale;
+        SDL_SetWindowSize(host->win, nw, nh);
+        host->content_w = nw; host->content_h = nh;
+    }
 
     int ww = host->content_w, wh = host->content_h;
     if (host->win) SDL_GetWindowSize(host->win, &ww, &wh);
@@ -1483,6 +1552,10 @@ bool sim_host_render(SimHost *host) {
     int rdx, rdy, rdw, rdh;
     host_view_rect(host, ww, wh, &rdx, &rdy, &rdw, &rdh);
     SDL_Rect dst = {rdx, rdy, rdw, rdh};
+    {   /* backlight: linear dimming of the panel only (window background and overlay stay full) */
+        int v = bl < 0 ? 0 : (bl > 255 ? 255 : bl);
+        SDL_SetTextureColorMod(host->tex, (Uint8)v, (Uint8)v, (Uint8)v);
+    }
     SDL_RenderCopyEx(host->ren, host->tex, NULL, &dst, host->view_rot * 90.0, NULL, SDL_FLIP_NONE);
 
     if (host->show_touch_debug) {
@@ -1684,7 +1757,7 @@ int sim_host_main(int argc, char **argv) {
     SimHost *host = sim_host_create(&cfg);
     if (!host) { fprintf(stderr, "sim_host_create failed\n"); return 1; }
     /* explicit CLI/env runtime overrides take precedence over profile/state defaults */
-    if (set_hw_rot) host->hw_rot = (hw_rot_set ? hw_rot_cli : cfg.hw_rot) & 3;
+    if (set_hw_rot) { host->hw_rot = (hw_rot_set ? hw_rot_cli : cfg.hw_rot) & 3; host->boot_rot = host->hw_rot; }
     if (set_lcd_w || set_lcd_h || set_scale) {
         int w = set_lcd_w ? cfg.lcd_w : host->panel_native_w;
         int h = set_lcd_h ? cfg.lcd_h : host->panel_native_h;

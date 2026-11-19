@@ -18,7 +18,6 @@
 #include "firmware_mgr.h"
 #include "help_ui.h"
 #include "i18n.h"
-#include "parts_ui.h"
 #include "proc.h"
 #include "profile.h"
 #include "sim_host.h"
@@ -75,7 +74,6 @@ typedef struct {
     GtkWidget *combo_sd_mode;
     GtkWidget *spin_audio_instance;
     GtkWidget *entry_audio_backend;
-    GtkWidget *check_net_enabled;
     GtkWidget *entry_net_mode;
     GtkWidget *entry_hostfwd;
     GtkWidget *entry_wifi_ssid;
@@ -111,11 +109,20 @@ typedef struct {
     GtkWidget *entry_cosim_unix;
     GtkTextBuffer *telemetry_buf;
     GtkWidget *telem_scroll;      /* Processes/Telemetry scrolled window: keeps its position on refresh */
-    GtkWidget *entry_parts_dir;
-    GtkWidget *entry_parts_instance_id;
-    GtkWidget *entry_parts_part_name;
-    GtkTextBuffer *parts_list_buf;
-    GtkTextBuffer *parts_report_buf;
+    /* Components page: battery editor (cfg.battery) and read-only hardware labels */
+    GtkWidget *check_bat_present;
+    GtkWidget *spin_bat_capacity;
+    GtkWidget *spin_bat_initial;
+    GtkWidget *check_bat_charging;
+    GtkWidget *spin_bat_charge_ma;
+    GtkWidget *spin_bat_time_scale;
+    GtkWidget *spin_bat_ma[5];    /* base, wifi, ble, backlight_full, audio */
+    GtkWidget *lbl_sd_status;     /* Storage page: card description */
+    GtkWidget *lbl_sd_pins;       /* Storage page: SD bus pins of the board (read-only) */
+    GtkWidget *lbl_comp_sd_pins;  /* Components page: same pins */
+    GtkWidget *lbl_comp_audio;    /* Components page: audio codec (read-only) */
+    GtkWidget *lbl_comp_display;  /* Components page: display controller/bus (read-only) */
+    GtkWidget *lbl_comp_touch;    /* Components page: touch (read-only) */
     GtkWidget *entry_log_filter;
     GtkWidget *combo_log_level;
     GtkWidget *combo_log_origin;
@@ -125,7 +132,6 @@ typedef struct {
     GtkWidget *notebook_logs;
     GtkWidget *paned_main;
     GtkWidget *paned_right;
-    GtkWidget *paned_parts;
     GtkWidget *paned_left_bottom;
     GtkWidget *revealer_debug;
     GtkWidget *revealer_gpio;
@@ -138,7 +144,7 @@ typedef struct {
     GtkWidget *w_dock;            /* bottom dock: 6 tool tabs + 3 log tabs + log filter row (hidden by default) */
     GtkWidget *w_log_bar;         /* log filter row inside the dock */
     GtkWidget *w_statusbar;       /* bottom status bar (badges line) */
-    GtkWidget *dock_pages_tools[6];
+    GtkWidget *dock_pages_tools[6];   /* index 1 is unused (no tool page); indices are fixed, do not renumber */
     GtkWidget *dock_pages_logs[3];
     GtkWidget *mi_start;
     GtkWidget *mi_stop;
@@ -175,8 +181,6 @@ typedef struct {
     SimProc *build_proc;
     SimHost *host;
     telem_state_t telem;
-    parts_ui_context_t parts_ctx;
-    parts_ui_report_t parts_report;
     launcher_config_t cfg;
     sim_profile_t profile;
     sim_board_catalog_t boards;
@@ -191,6 +195,7 @@ typedef struct {
     gboolean net_started;
     gboolean host_connected;
     gboolean ui_syncing;
+    int host_rot_seen;            /* last host hw rotation the launcher synced from (-1 = none): follows the firmware's own rotation */
     gboolean dirty;
     gboolean sd_sync_ok;       /* set only while do_start() re-runs after a successful SD folder sync */
     gboolean restoring_layout;
@@ -212,14 +217,14 @@ static void update_summary(App *app);
 static void nav_sync(App *app);
 static void render_validation(App *app, bool run_apply);
 static void update_panels(App *app);
-static void update_status(App *app);
 static const char *card_state(const App *app);
+static void card_describe(const App *app, char *out, size_t outsz);
+static void resolve_repo_path(const App *app, const char *in, char *out, size_t outsz);
 static char *choose_path_dialog(App *app, const char *title, GtkFileChooserAction action, const char *suggested);
 static void on_save(GtkButton *b, gpointer data);
 static void schedule_layout_save(App *app);
 static void save_ui_layout_to_cfg(App *app);
 static void restore_ui_layout(App *app);
-static void refresh_parts_runtime_hints(App *app);
 static void render_debug_gpio_panels(App *app);
 static const char *chip_id_for_index(int idx);
 static int chip_index_for_id(const char *id);
@@ -386,11 +391,10 @@ static void cfg_apply_profile_shared(App *app, const launcher_config_t *prev) {
         slfs_littlefs_set_mount(&c->storage.littlefs, p->storage.littlefs_mount_path);
     else
         c->storage.littlefs.mount_path[0] = '\0';
-    c->storage.sd.enabled = p->storage.sd_enabled;
-    if (p->storage.sd_image_path[0])
-        slfs_sd_set_image(&c->storage.sd, p->storage.sd_image_path);
-    else
-        c->storage.sd.image_path[0] = '\0';
+    /* One SD identity: cfg.sd_enabled / cfg.sd_image_path (profile storage.sd_enabled / sd_image_path).
+     * The legacy storage.sd_card block of the profile is no longer read; storage.sd mirrors the identity. */
+    c->storage.sd.enabled = c->sd_enabled;
+    slfs_sd_set_image(&c->storage.sd, c->sd_image_path);
 
     c->audio_net.i2s_enabled = c->audio;
     c->audio_net.i2s_realtime = p->audio.realtime;
@@ -717,14 +721,8 @@ static int append_emu_tail(App *app, char *out, size_t outsz, size_t *off, GStri
     audio_net_args_t args;
     if (audio_net_format_emu_args(&an, &args) < 0) return -1;
 
-    slfs_config_t sc = app->cfg.storage;
-    int maj, min, pat; slfs_probe_version(app, &maj, &min, &pat);
-    (void)slfs_apply_capabilities(&sc, maj, min, pat, true);
-    char sd[SLFS_MAX_ARGS], sd_note[SLFS_MAX_MSG];
-    int sd_n = slfs_build_sd_args(&sc, sd, sizeof(sd), sd_note, sizeof(sd_note));
-    if (sd_n < 0) return -1;
-    if (sd_n == 0 && sc.sd.enabled && notes)
-        g_string_append_printf(notes, "SD requested: %s\n", sc.sd.capability_note[0] ? sc.sd.capability_note : "no --sd emitted");
+    /* The SD card has one identity (cfg.sd_enabled / cfg.sd_image_path): start.sh adds the default --sd,
+     * build_emu_command adds --no-sd and/or one custom --sd. This tail emits no second --sd. */
 
     /* Always forward the cosim-tcp endpoint, then any enabled helper args. */
     if (cmd_append(out, outsz, off, " --") != 0) return -1;
@@ -738,13 +736,6 @@ static int append_emu_tail(App *app, char *out, size_t outsz, size_t *off, GStri
         else if (cmd_append_quoted(out, outsz, off, " ", flag) != 0) return -1;
         if (i + 1 < args.argc &&
             cmd_append_quoted(out, outsz, off, " ", args.argv[i + 1]) != 0) return -1;
-    }
-    if (sd_n > 0) {
-        /* same "--sd PATH[:ro]" as slfs_build_sd_args, with the path quoted */
-        gchar *q = g_shell_quote(sc.sd.image_path);
-        int rc = cmd_append(out, outsz, off, " --sd %s%s", q, sc.sd.read_only ? ":ro" : "");
-        g_free(q);
-        if (rc != 0) return -1;
     }
     if (app->check_gdb_enabled && gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(app->check_gdb_enabled))) {
         if (cmd_append(out, outsz, off, " --gdb %d", ports.gdb) != 0) return -1;
@@ -780,6 +771,10 @@ static int build_emu_command(App *app, char *out, size_t outsz, GString *notes) 
     char sd_tail[PATH_MAX + 16];
     if (launcher_config_sd_tail_args(&app->cfg, sd_tail, sizeof(sd_tail)) == 0 && sd_tail[0] &&
         cmd_append_quoted(out, outsz, &off, " --sd ", app->cfg.sd_image_path) != 0) return -1;
+    /* simulated battery (es3c28p, only when the profile has a battery block): esp-emu I2C register-file device */
+    char bat[768];
+    if (launcher_config_battery_arg(&app->cfg, bat, sizeof(bat)) == 0 && bat[0] &&
+        cmd_append(out, outsz, &off, " %s", bat) != 0) return -1;
     return 0;
 }
 
@@ -792,10 +787,7 @@ static void append_storage_merge_notes(App *app, GString *gs) {
     int n = slfs_build_merge_args(&sc, merge, sizeof(merge), note, sizeof(note));
     if (n > 0 && merge[0]) g_string_append_printf(gs, "\n# merge step (not a run arg): %s", merge);
     else if (sc.littlefs.enabled) g_string_append_printf(gs, "\n# LittleFS: %s", note[0] ? note : slfs_capability_str(sc.littlefs.capability));
-    char sd[SLFS_MAX_ARGS], sd_note[SLFS_MAX_MSG];
-    int sn = slfs_build_sd_args(&sc, sd, sizeof(sd), sd_note, sizeof(sd_note));
-    if (sn > 0 && sd[0]) g_string_append_printf(gs, "\n# future SD arg: %s", sd);
-    else if (sc.sd.enabled) g_string_append_printf(gs, "\n# SD: %s", sd_note[0] ? sd_note : "no --sd emitted");
+    /* no SD note here: the card is on the command line once (--no-sd and/or --sd from cfg.sd_*) */
 }
 
 /* Display and log copy of an esp-emu command: the Wi-Fi passphrase shows as '***'.
@@ -868,6 +860,44 @@ static int parse_int_str(const char *s, int def) {
     return (int)strtol(s, NULL, 0);
 }
 
+/* Sets a tooltip only when it differs: re-setting the same text every status tick made open tooltips flicker. */
+static void tip_set(GtkWidget *w, const char *text) {
+    if (!w) return;
+    gchar *cur = gtk_widget_get_tooltip_text(w);
+    gboolean same = (cur == NULL && (text == NULL || text[0] == '\0')) || (cur && text && strcmp(cur, text) == 0);
+    g_free(cur);
+    if (!same) gtk_widget_set_tooltip_text(w, text);
+}
+
+static void tip_set_markup(GtkWidget *w, const char *markup) {
+    if (!w) return;
+    gchar *cur = gtk_widget_get_tooltip_markup(w);
+    gboolean same = cur && markup && strcmp(cur, markup) == 0;
+    g_free(cur);
+    if (!same) gtk_widget_set_tooltip_markup(w, markup);
+}
+
+/* Components page battery widgets -> cfg.battery and the profile mirror. The "configured" flag is
+ * set only by on_battery_edited (an edit), never here, so an untouched page writes no battery block. */
+static void collect_battery(App *app) {
+    if (!app->spin_bat_capacity) return;
+    launcher_battery_t *b = &app->cfg.battery;
+    b->present = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(app->check_bat_present));
+    b->capacity_mah = gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(app->spin_bat_capacity));
+    b->initial_percent = gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(app->spin_bat_initial));
+    b->charging = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(app->check_bat_charging));
+    b->charge_current_ma = gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(app->spin_bat_charge_ma));
+    b->time_scale = gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(app->spin_bat_time_scale));
+    int *ma[5] = { &b->ma_base, &b->ma_wifi, &b->ma_ble, &b->ma_backlight, &b->ma_audio };
+    for (int i = 0; i < 5; ++i) *ma[i] = gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(app->spin_bat_ma[i]));
+    sim_profile_battery_t *pb = &app->profile.board_hardware.battery;
+    pb->configured = b->configured; pb->present = b->present; pb->capacity_mah = b->capacity_mah;
+    pb->initial_percent = b->initial_percent; pb->charging = b->charging;
+    pb->charge_current_ma = b->charge_current_ma; pb->time_scale = b->time_scale;
+    pb->ma_base = b->ma_base; pb->ma_wifi = b->ma_wifi; pb->ma_ble = b->ma_ble;
+    pb->ma_backlight = b->ma_backlight; pb->ma_audio = b->ma_audio;
+}
+
 static void apply_ui_to_cfg(App *app) {
     if (!app || app->ui_syncing) return;
     gint bi = gtk_combo_box_get_active(GTK_COMBO_BOX(app->combo_board));
@@ -929,8 +959,11 @@ static void apply_ui_to_cfg(App *app) {
                                       parse_u32_str(etext(app->entry_littlefs_offset)),
                                       parse_u32_str(etext(app->entry_littlefs_size)));
     (void)slfs_littlefs_set_mount(&app->cfg.storage.littlefs, etext(app->entry_littlefs_mount));
-    app->cfg.storage.sd.enabled = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(app->check_sd_enabled));
-    (void)slfs_sd_set_image(&app->cfg.storage.sd, etext(app->entry_sd_image));
+    /* one SD identity (cfg.sd_enabled / cfg.sd_image_path); storage.sd mirrors it for the capability notes */
+    app->cfg.sd_enabled = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(app->check_sd_enabled));
+    snprintf(app->cfg.sd_image_path, sizeof(app->cfg.sd_image_path), "%s", etext(app->entry_sd_image));
+    app->cfg.storage.sd.enabled = app->cfg.sd_enabled;
+    (void)slfs_sd_set_image(&app->cfg.storage.sd, app->cfg.sd_image_path);
     snprintf(app->cfg.sd_dir, sizeof(app->cfg.sd_dir), "%s", etext(app->entry_sd_dir));
     {
         slfs_sd_mode_t mode = SLFS_SD_MODE_SDMMC;
@@ -942,8 +975,9 @@ static void apply_ui_to_cfg(App *app) {
                                 parse_int_str(etext(app->entry_sd_slot), -1),
                                 parse_int_str(etext(app->entry_sd_cs), -1));
     }
+    collect_battery(app);
 
-    app->cfg.audio = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(app->check_audio));
+    app->cfg.audio =gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(app->check_audio));
     app->cfg.audio_net.i2s_enabled = app->cfg.audio;
     (void)audio_net_set_i2s_wav_out(&app->cfg.audio_net, etext(app->entry_audio_out));
     (void)audio_net_set_i2s_wav_in(&app->cfg.audio_net, etext(app->entry_audio_in));
@@ -1054,7 +1088,51 @@ static void update_panels(App *app) {
                                       card_state(app));
         else g_string_append(gs, _("badges: board metadata unavailable"));
         gtk_label_set_text(GTK_LABEL(app->caps_label), gs->str);
-        gtk_widget_set_tooltip_text(app->caps_label, gs->str); g_string_free(gs, TRUE);
+        tip_set(app->caps_label, gs->str); g_string_free(gs, TRUE);
+    }
+    if (app->lbl_sd_status) {   /* Storage page: the card as the emulator sees it, with the absolute image path */
+        char d[256], rp[PATH_MAX];
+        card_describe(app, d, sizeof(d));
+        resolve_repo_path(app, app->cfg.sd_image_path, rp, sizeof(rp));
+        gchar *t = g_strdup_printf("%s\n%s", d, rp);
+        gtk_label_set_text(GTK_LABEL(app->lbl_sd_status), t); g_free(t);
+    }
+    if (app->lbl_sd_pins || app->lbl_comp_sd_pins) {
+        /* ES3C28P figures: firmware BoardConfig.h (BOARD_SD_*_PIN, SDMMC 4-bit); other boards show the catalog text */
+        const char *pt = launcher_board_id(app->cfg.board) && strcmp(launcher_board_id(app->cfg.board), "es3c28p") == 0
+            ? _("ES3C28P SD pins: CLK 38, CMD 40, D0 39, D1 41, D2 48, D3 47")
+            : (b && b->pins.storage[0] ? b->pins.storage : _("SD pins: not described for this board"));
+        if (app->lbl_sd_pins) gtk_label_set_text(GTK_LABEL(app->lbl_sd_pins), pt);
+        if (app->lbl_comp_sd_pins) gtk_label_set_text(GTK_LABEL(app->lbl_comp_sd_pins), pt);
+    }
+    if (app->lbl_comp_audio) {
+        gchar *t = g_strdup_printf("%s: %s, %s %s%s%s", _("Codec"),
+                                   b && b->audio.codec[0] ? b->audio.codec : "?", _("I2C"),
+                                   b && b->audio.codec_i2c_addr[0] ? b->audio.codec_i2c_addr : "?",
+                                   b && b->audio.bus[0] ? ", " : "", b && b->audio.bus[0] ? b->audio.bus : "");
+        gtk_label_set_text(GTK_LABEL(app->lbl_comp_audio), t); g_free(t);
+    }
+    if (app->lbl_comp_display) {  /* Components page: read-only display and touch facts (board catalog + profile) */
+        const sim_profile_board_hw_t *hw = &app->profile.board_hardware;
+        gchar *t = g_strdup_printf("%s: %s, %s%s%s", _("Controller / bus"),
+                                   b && b->display.controller[0] ? b->display.controller : "?",
+                                   b && b->display.bus[0] ? b->display.bus : "?",
+                                   hw->display.panel_name[0] ? "\n" : "", hw->display.panel_name[0] ? hw->display.panel_name : "");
+        gtk_label_set_text(GTK_LABEL(app->lbl_comp_display), t); g_free(t);
+    }
+    if (app->lbl_comp_touch) {
+        const sim_profile_touch_t *tc = &app->profile.board_hardware.touch;
+        GString *g = g_string_new(NULL);
+        g_string_append_printf(g, "%s: %s, %s", _("Controller / bus"),
+                               tc->controller[0] ? tc->controller : (b && b->touch_input.controller[0] ? b->touch_input.controller : "?"),
+                               tc->bus[0] ? tc->bus : (b && b->touch_input.bus[0] ? b->touch_input.bus : "?"));
+        if (b && b->touch_input.i2c_addr[0]) g_string_append_printf(g, "\n%s: %s", _("I2C address"), b->touch_input.i2c_addr);
+        if (tc->pin_count) {
+            g_string_append_printf(g, "\n%s:", _("Pins"));
+            for (size_t i = 0; i < tc->pin_count; i++)
+                g_string_append_printf(g, " %s=%s", tc->pins[i].key, tc->pins[i].value[0] ? tc->pins[i].value : "-");
+        } else if (b && b->pins.touch[0]) g_string_append_printf(g, "\n%s: %s", _("Pins"), b->pins.touch);
+        gtk_label_set_text(GTK_LABEL(app->lbl_comp_touch), g->str); g_string_free(g, TRUE);
     }
     update_summary(app); /* every configuration change passes through here: keep the canvas summary in step */
 }
@@ -1114,7 +1192,7 @@ static void show_validation_result(App *app) {
         char buf[128];
         snprintf(buf, sizeof(buf), _("Validation: %d errors, %d warnings"), app->val_errors, app->val_warnings);
         gtk_label_set_text(GTK_LABEL(app->lbl_val_result), buf);
-        gtk_widget_set_tooltip_text(app->lbl_val_result, _("Result of the last Simulator > Validate. Details in the Validation tab"));
+        tip_set(app->lbl_val_result, _("Result of the last Simulator > Validate. Details in the Validation tab"));
     }
     if (app->notebook_bottom && app->dock_pages_tools[0]) {
         int page = gtk_notebook_page_num(GTK_NOTEBOOK(app->notebook_bottom), app->dock_pages_tools[0]);
@@ -1171,7 +1249,6 @@ static void on_cfg_changed(GtkWidget *w, gpointer data) {
     gtk_widget_set_sensitive(app->entry_custom, app->cfg.firmware == LAUNCHER_FW_CUSTOM);
     gtk_widget_set_sensitive(app->entry_elf, gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(app->check_use_elf)));
     update_panels(app);
-    refresh_parts_runtime_hints(app);
     render_debug_gpio_panels(app);
     set_dirty(app, TRUE);
     update_status(app);
@@ -1192,66 +1269,6 @@ static void on_firmware_changed(GtkComboBox *cb, gpointer data) {
     eset(app->entry_merged, app->cfg.merged_image_path); eset(app->entry_elf, app->cfg.elf_path);
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(app->check_use_elf), app->cfg.use_elf);
     on_cfg_changed(NULL, app);
-}
-
-static void render_parts_ui(App *app) {
-    if (!app) return;
-    GString *gs = g_string_new(NULL);
-    g_string_append_printf(gs, "Discovered parts (%d):\n", app->parts_ctx.part_count);
-    for (int i = 0; i < app->parts_ctx.part_count; i++) {
-        const parts_ui_part_meta_t *p = &app->parts_ctx.parts[i];
-        g_string_append_printf(gs, "- %s [%s] wasm=%s sidecar=%s abi=%s proto=%s claims=%d meta=%d\n",
-                               p->name[0]?p->name:"(unnamed)",
-                               parts_ui_support_state_name(parts_ui_classify_support(&app->parts_ctx, p)),
-                               p->wasm_path, p->has_sidecar ? p->sidecar_json_path : "(none)",
-                               p->abi_version[0]?p->abi_version:"?", p->proto_version[0]?p->proto_version:"?",
-                               p->claim_count, p->meta_count);
-        if (p->support_note[0]) g_string_append_printf(gs, "  note: %s\n", p->support_note);
-        for (int c = 0; c < p->claim_count; c++) {
-            const parts_ui_claim_t *cl = &p->claims[c];
-            g_string_append_printf(gs, "  claim: %s bus=%s port=%d pin=%d addr=%d cs=%d ch=%d role=%s %s\n",
-                                   parts_ui_claim_kind_name(cl->kind), cl->bus, cl->port, cl->pin, cl->addr, cl->cs_pin, cl->channel, cl->role, cl->note);
-        }
-    }
-    g_string_append_printf(gs, "\nInstances (%d):\n", app->parts_ctx.instance_count);
-    for (int i = 0; i < app->parts_ctx.instance_count; i++) {
-        const parts_ui_instance_t *in = &app->parts_ctx.instances[i];
-        g_string_append_printf(gs, "- id=%s part=%s enabled=%d attached=%d state=%s needs_sync=%d status='%s' err='%s'\n",
-                               in->id, in->part_name, in->enabled, in->attached,
-                               parts_ui_support_state_name(in->state), in->needs_sync, in->status_text, in->last_error);
-        for (int c = 0; c < in->wiring_count; c++) {
-            const parts_ui_claim_t *cl = &in->wiring[c];
-            g_string_append_printf(gs, "  wiring: %s bus=%s port=%d pin=%d addr=%d cs=%d ch=%d role=%s\n",
-                                   parts_ui_claim_kind_name(cl->kind), cl->bus, cl->port, cl->pin, cl->addr, cl->cs_pin, cl->channel, cl->role);
-        }
-    }
-    g_string_append(gs, "\nHost/capability hints: cosim_tcp=");
-    g_string_append(gs, app->parts_ctx.host_cosim_tcp_available ? "yes" : "no");
-    g_string_append(gs, " cosim_board=");
-    g_string_append(gs, app->parts_ctx.host_cosim_board_available ? "yes" : "no");
-    g_string_append(gs, " esp_emu_wasm_parts=");
-    g_string_append(gs, app->parts_ctx.esp_emu_has_wasm_parts ? "yes(conditional)" : "no");
-    g_string_append(gs, " control_part_cmds=");
-    g_string_append(gs, app->parts_ctx.esp_emu_has_control_part_cmds ? "yes" : "no");
-    g_string_append_printf(gs, " ver=%s\n", app->parts_ctx.esp_emu_version[0]?app->parts_ctx.esp_emu_version:"?");
-    set_buf_text(app->parts_list_buf, gs->str);
-    g_string_free(gs, TRUE);
-
-    gs = g_string_new(NULL);
-    if (app->lbl_diag) {
-        char diag[160];
-        snprintf(diag, sizeof(diag), _("Parts report: %d items, %d errors, %d warnings"), app->parts_report.count, app->parts_report.errors, app->parts_report.warnings);
-        gtk_label_set_text(GTK_LABEL(app->lbl_diag), diag);
-        gtk_widget_set_tooltip_text(app->lbl_diag, _("Diagnostics of the Storage/Parts report (parts scan, add and conflict check)"));
-    }
-    for (int i = 0; i < app->parts_report.count; i++) {
-        const parts_ui_diag_t *d = &app->parts_report.items[i];
-        const char *sev = d->severity == PARTS_UI_DIAG_ERROR ? "error" : (d->severity == PARTS_UI_DIAG_WARN ? "warn" : "info");
-        g_string_append_printf(gs, "[%s] %s (%s): %s\n", sev, d->code, d->subject, d->message);
-    }
-    if (app->parts_report.count == 0) g_string_append(gs, _("(no diagnostics)\n"));
-    set_buf_text(app->parts_report_buf, gs->str);
-    g_string_free(gs, TRUE);
 }
 
 static void refresh_telemetry(App *app) {
@@ -1330,7 +1347,7 @@ static const char *k_sum_tips[SUM_ROWS] = {
 static void sum_set(App *app, int row, const char *fmt, ...) {
     if (!app->lbl_sum_val[row]) return;
     va_list ap; va_start(ap, fmt); gchar *m = g_strdup_vprintf(fmt, ap); va_end(ap);
-    gtk_label_set_markup(GTK_LABEL(app->lbl_sum_val[row]), m); gtk_widget_set_tooltip_markup(app->lbl_sum_val[row], m); g_free(m);
+    gtk_label_set_markup(GTK_LABEL(app->lbl_sum_val[row]), m); tip_set_markup(app->lbl_sum_val[row], m); g_free(m);
 }
 static gchar *sum_esc(const char *s) { return g_markup_escape_text(s && s[0] ? s : _("(none)"), -1); }
 static gchar *sum_mark(bool on) {
@@ -1464,7 +1481,7 @@ static void update_status(App *app) {
             char tb_profile[320];
             snprintf(tb_profile, sizeof(tb_profile), _("Profile: %s"), pn);
             gtk_label_set_text(GTK_LABEL(app->lbl_profile), tb_profile);
-            if (app->lbl_profile) gtk_widget_set_tooltip_text(app->lbl_profile, app->profile_path);
+            if (app->lbl_profile) tip_set(app->lbl_profile, app->profile_path);
             const sim_board_t *bd2 = sim_board_catalog_get(&app->boards, launcher_board_id(app->cfg.board));
             char bl[160]; snprintf(bl, sizeof(bl), "%s%s", launcher_board_id(app->cfg.board), res);
             (void)bd2; gtk_label_set_text(GTK_LABEL(app->lbl_board), bl);
@@ -1484,7 +1501,7 @@ static void update_status(App *app) {
             gtk_label_set_text(GTK_LABEL(app->lbl_timer), tm);
         }
         gtk_label_set_text(GTK_LABEL(app->status_label), line);
-        gtk_widget_set_tooltip_text(app->status_label, s);
+        tip_set(app->status_label, s);
     }
     gtk_widget_set_sensitive(app->btn_start, !emu_running);
     gtk_widget_set_sensitive(app->btn_stop, emu_running || app->host_attached);
@@ -1533,6 +1550,7 @@ static void stop_host(App *app) {
     }
     if (app->cosim_unix_actual[0]) { unlink(app->cosim_unix_actual); app->cosim_unix_actual[0] = '\0'; }
     app->host_attached = FALSE; app->host_connected = FALSE;
+    app->host_rot_seen = -1;
 }
 /* SDL only learns that the embedded X window was moved/resized when its event queue is pumped (sim_host never does it in embedded mode);
  * without this the SDL view keeps the old size after a panel is shown/hidden or a divider is dragged. */
@@ -1541,7 +1559,20 @@ static void sdl_sync_events(void) { SDL_PumpEvents(); SDL_FlushEvents(SDL_FIRSTE
 static void sdl_set_canvas_size(int w, int h) {
     for (Uint32 id = 1; id <= 4; id++) { SDL_Window *sw = SDL_GetWindowFromID(id); if (sw) { int cw = 0, ch = 0; SDL_GetWindowSize(sw, &cw, &ch); if (cw != w || ch != h) SDL_SetWindowSize(sw, w, h); break; } }
 }
-static gboolean render_tick(gpointer data) { App *app = (App*)data; if (app->host && app->host_attached) { sdl_sync_events(); { GtkAllocation al; gtk_widget_get_allocation(app->canvas, &al); sdl_set_canvas_size(al.width, al.height); } sim_host_update(app->host); sim_host_render(app->host); } return G_SOURCE_CONTINUE; }
+/* The host follows the firmware's rotation (Settings > Display). When it changes, bring cfg and the "HW rot" spinner along
+ * without marking the profile dirty. Only a change of the host value syncs, so a spinner edit is not undone while running. */
+static void sync_hw_rot_from_host(App *app) {
+    int hr = sim_host_hw_rot(app->host) & 3;
+    if (hr == app->host_rot_seen) return;
+    app->host_rot_seen = hr;
+    if (hr == (app->cfg.hw_rotation & 3)) return;
+    app->cfg.hw_rotation = hr;
+    app->profile.board_hardware.display.hw_rotation = hr;
+    app->ui_syncing = TRUE; gtk_spin_button_set_value(GTK_SPIN_BUTTON(app->spin_rot), hr); app->ui_syncing = FALSE;
+    write_hw_state(app);
+    update_summary(app);
+}
+static gboolean render_tick(gpointer data) { App *app = (App*)data; if (app->host && app->host_attached) { sdl_sync_events(); { GtkAllocation al; gtk_widget_get_allocation(app->canvas, &al); sdl_set_canvas_size(al.width, al.height); } sim_host_update(app->host); sim_host_render(app->host); sync_hw_rot_from_host(app); } return G_SOURCE_CONTINUE; }
 static gboolean try_attach_host(gpointer data) {
     App *app = (App*)data; if (!app->host || app->host_attached) return G_SOURCE_REMOVE;
     GdkWindow *gw = gtk_widget_get_window(app->canvas);
@@ -1858,12 +1889,19 @@ static void on_log_follow_toggled(GtkToggleButton *b, gpointer data){
 
 static void on_merge_wizard(GtkButton *b, gpointer data){
     (void)b; App *app=(App*)data; if(!app) return;
-    GtkWidget *dlg = gtk_dialog_new_with_buttons("Merge Wizard (esptool merge-bin)",
+    GtkWidget *dlg = gtk_dialog_new_with_buttons(_("Merge firmware image (esptool merge-bin)"),
         GTK_WINDOW(app->window), GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
         _("Validate"), 1, _("Dry-run"), 2, _("Merge"), 3, _("Close"), GTK_RESPONSE_CLOSE, NULL);
     GtkWidget *box = gtk_dialog_get_content_area(GTK_DIALOG(dlg));
     GtkWidget *grid = gtk_grid_new(); gtk_grid_set_row_spacing(GTK_GRID(grid),4); gtk_grid_set_column_spacing(GTK_GRID(grid),6);
-    gtk_container_set_border_width(GTK_CONTAINER(grid),8); gtk_box_pack_start(GTK_BOX(box), grid, FALSE,FALSE,0);
+    gtk_container_set_border_width(GTK_CONTAINER(grid),8);
+    {   GtkWidget *intro = gtk_label_new(_("Merge joins the bootloader, partition table, app and an optional LittleFS image into one flash image that esp-emu boots. "
+            "You need it only after building new firmware; the KryonOS v3 presets already ship a merged.bin. "
+            "Validate checks that the input files exist, Dry-run shows the esptool command without running it, and Merge writes the output file."));
+        gtk_label_set_line_wrap(GTK_LABEL(intro), TRUE); gtk_label_set_xalign(GTK_LABEL(intro), 0.0); gtk_label_set_max_width_chars(GTK_LABEL(intro), 70);
+        gtk_widget_set_margin_start(intro, 8); gtk_widget_set_margin_end(intro, 8); gtk_widget_set_margin_top(intro, 8);
+        gtk_box_pack_start(GTK_BOX(box), intro, FALSE,FALSE,0); }
+    gtk_box_pack_start(GTK_BOX(box), grid, FALSE,FALSE,0);
     fw_merge_plan_t plan; fw_merge_plan_init(&plan);
     (void)fw_merge_plan_defaults_for_board(launcher_board_id(app->cfg.board), &plan);
     GtkWidget *e_board = gtk_entry_new(); gtk_entry_set_text(GTK_ENTRY(e_board), launcher_board_id(app->cfg.board));
@@ -1878,6 +1916,7 @@ static void on_merge_wizard(GtkButton *b, gpointer data){
     GtkWidget *chk_fs = gtk_check_button_new_with_label(_("Include FS (LittleFS)")); gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(chk_fs), plan.include_fs);
     GtkWidget *chk_ow = gtk_check_button_new_with_label(_("Overwrite output")); gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(chk_ow), TRUE);
     GtkWidget *lbl_note = gtk_label_new(_("SD card is not part of the merged image: esp-emu 1.1.0 mounts it with --sd (Card menu).")); gtk_label_set_xalign(GTK_LABEL(lbl_note),0.0);
+    gtk_label_set_line_wrap(GTK_LABEL(lbl_note), TRUE); gtk_label_set_max_width_chars(GTK_LABEL(lbl_note), 70);
     int r=0;
     gtk_grid_attach(GTK_GRID(grid), gtk_label_new(_("Board")),0,r,1,1); gtk_grid_attach(GTK_GRID(grid), e_board,1,r,1,1); r++;
     gtk_grid_attach(GTK_GRID(grid), gtk_label_new(_("Bootloader")),0,r,1,1); gtk_grid_attach(GTK_GRID(grid), e_boot,1,r,1,1); r++;
@@ -1891,7 +1930,11 @@ static void on_merge_wizard(GtkButton *b, gpointer data){
     gtk_grid_attach(GTK_GRID(grid), rowf,1,r,1,1); r++;
     gtk_grid_attach(GTK_GRID(grid), chk_fs,0,r,1,1); gtk_grid_attach(GTK_GRID(grid), chk_ow,1,r,1,1); r++;
     gtk_grid_attach(GTK_GRID(grid), lbl_note,0,r,2,1); r++;
-    GtkWidget *sc = gtk_scrolled_window_new(NULL,NULL); gtk_scrolled_window_set_min_content_height(GTK_SCROLLED_WINDOW(sc),120);
+    GtkWidget *lbl_status = gtk_label_new(""); gtk_label_set_xalign(GTK_LABEL(lbl_status), 0.0); gtk_label_set_line_wrap(GTK_LABEL(lbl_status), TRUE);
+    gtk_label_set_selectable(GTK_LABEL(lbl_status), TRUE);
+    gtk_widget_set_margin_start(lbl_status, 8); gtk_widget_set_margin_end(lbl_status, 8);
+    gtk_box_pack_start(GTK_BOX(box), lbl_status, FALSE,FALSE,0);
+    GtkWidget *sc = gtk_scrolled_window_new(NULL,NULL); gtk_scrolled_window_set_min_content_height(GTK_SCROLLED_WINDOW(sc),180);
     GtkWidget *tv = gtk_text_view_new(); gtk_text_view_set_editable(GTK_TEXT_VIEW(tv),FALSE); gtk_text_view_set_monospace(GTK_TEXT_VIEW(tv),TRUE);
     GtkTextBuffer *tb = gtk_text_view_get_buffer(GTK_TEXT_VIEW(tv)); gtk_container_add(GTK_CONTAINER(sc), tv);
     gtk_box_pack_start(GTK_BOX(box), sc, TRUE,TRUE,0);
@@ -1912,81 +1955,47 @@ static void on_merge_wizard(GtkButton *b, gpointer data){
         char sum[2048]; sum[0]='\0'; (void)fw_merge_plan_summary(&plan, sum, sizeof(sum));
         GString *gs = g_string_new(sum);
         g_string_append_printf(gs, "\nvalidate: ok=%d errors=%d warnings=%d\n%s\n%s\n", v.ok, v.error_count, v.warning_count, v.errors, v.warnings);
-        if (resp == 2 || resp == 3) {
+        gtk_label_set_text(GTK_LABEL(lbl_status), "");
+        if (resp == 3 && !v.ok) {
+            g_string_append(gs, _("not merged: fix the validation errors\n"));
+            gtk_label_set_text(GTK_LABEL(lbl_status), _("Not merged: fix the validation errors"));
+        } else if (resp == 2 || resp == 3) {
             fw_merge_run_t run; memset(&run,0,sizeof(run));
             int rc = fw_merge_plan_run(&plan, resp == 2, &run);
             g_string_append_printf(gs, "%s: rc=%d exit=%d executed=%d\ncmd: %s\n%s\n",
                 run.dry_run?"dry-run":"merge", rc, run.exit_code, run.executed?1:0, run.cmdline, run.output);
-            if (!run.dry_run && rc == 0) {
-                append_launcher_log(app, _("[merge] merged output created/updated"));
-                if (app->entry_merged) { eset(app->entry_merged, plan.output); on_cfg_changed(NULL, app); }
+            if (!run.dry_run) {
+                if (rc == 0) {
+                    char outabs[PATH_MAX]; resolve_repo_path(app, plan.output, outabs, sizeof(outabs));
+                    struct stat st; long long nbytes = (stat(outabs, &st) == 0) ? (long long)st.st_size : -1;
+                    gchar *ok = g_strdup_printf(_("Merged OK: %s (%lld B)"), plan.output, nbytes);
+                    gtk_label_set_text(GTK_LABEL(lbl_status), ok);
+                    g_string_append_printf(gs, "%s\n", ok); g_free(ok);
+                    append_launcher_log(app, _("[merge] merged output created/updated"));
+                    launcher_config_resolve_paths(&app->cfg);
+                    if (strcmp(plan.output, app->cfg.merged_image_path) != 0) {
+                        /* Select the new image: Custom firmware pointing at the output (on_firmware_changed keeps that path). */
+                        snprintf(app->cfg.custom_firmware_path, sizeof(app->cfg.custom_firmware_path), "%s", plan.output);
+                        eset(app->entry_custom, plan.output);
+                        gtk_combo_box_set_active(GTK_COMBO_BOX(app->combo_firmware), LAUNCHER_FW_CUSTOM);
+                        gchar *lg = g_strdup_printf(_("[merge] selection switched to Custom: %s"), plan.output);
+                        append_launcher_log(app, lg); g_free(lg);
+                    }
+                    if (app->entry_merged) { eset(app->entry_merged, plan.output); on_cfg_changed(NULL, app); }
+                    if (app->emu_proc && sim_proc_is_running(app->emu_proc)) {
+                        g_string_append(gs, _("The emulator is running: restart it to use the new image.\n"));
+                        gchar *both = g_strdup_printf("%s\n%s", gtk_label_get_text(GTK_LABEL(lbl_status)), _("The emulator is running: restart it to use the new image."));
+                        gtk_label_set_text(GTK_LABEL(lbl_status), both); g_free(both);
+                    }
+                } else {
+                    gchar *bad = g_strdup_printf(_("Merge FAILED (exit %d)"), run.exit_code);
+                    gtk_label_set_text(GTK_LABEL(lbl_status), bad); g_free(bad);
+                }
             }
         }
         set_buf_text(tb, gs->str); g_string_free(gs, TRUE);
     }
     gtk_widget_destroy(dlg);
-}
-
-static void on_parts_scan(GtkButton *b, gpointer data) {
-    (void)b; App *app = (App*)data; if (!app) return;
-    const char *dir = etext(app->entry_parts_dir);
-    if (!dir || !dir[0]) dir = "simulator/emu/parts";
-    char abs[PATH_MAX]; resolve_repo_path(app, dir, abs, sizeof(abs));
-    parts_ui_report_init(&app->parts_report);
-    memset(&app->parts_ctx.parts, 0, sizeof(app->parts_ctx.parts)); app->parts_ctx.part_count = 0;
-    memset(&app->parts_ctx.instances, 0, sizeof(app->parts_ctx.instances)); app->parts_ctx.instance_count = 0;
-    app->parts_ctx.event_head = 0; app->parts_ctx.event_count = 0;
-    app->parts_ctx.host_cosim_tcp_available = true;
-    app->parts_ctx.host_cosim_board_available = app->cfg.cosim_board_path[0] != '\0';
-    app->parts_ctx.esp_emu_has_wasm_parts = false; /* conditional(version/tool), runtime integration pending */
-    app->parts_ctx.esp_emu_has_control_part_cmds = false;
-    snprintf(app->parts_ctx.esp_emu_version, sizeof(app->parts_ctx.esp_emu_version), "unknown");
-    int n = parts_ui_discover_dir(&app->parts_ctx, abs, &app->parts_report);
-    if (n < 0) parts_ui_report_add(&app->parts_report, PARTS_UI_DIAG_ERROR, "PARTS_SCAN_FAIL", abs, _("Failed to discover parts in '%s'"), abs);
-    else parts_ui_report_add(&app->parts_report, PARTS_UI_DIAG_INFO, "PARTS_SCAN_OK", abs, _("Discovered %d part(s) in '%s'"), n, abs);
-    (void)parts_ui_validate(&app->parts_ctx, &app->parts_report);
-    render_parts_ui(app);
-}
-static void on_parts_add_instance(GtkButton *b, gpointer data) {
-    (void)b; App *app = (App*)data; if (!app) return;
-    const char *iid = etext(app->entry_parts_instance_id);
-    const char *pname = etext(app->entry_parts_part_name);
-    char idbuf[PARTS_UI_MAX_NAME];
-    if (!iid || !iid[0]) { snprintf(idbuf, sizeof(idbuf), "inst%d", app->parts_ctx.instance_count + 1); iid = idbuf; }
-    if (!pname || !pname[0]) {
-        if (app->parts_ctx.part_count > 0) pname = app->parts_ctx.parts[0].name;
-        else { parts_ui_report_add(&app->parts_report, PARTS_UI_DIAG_ERROR, "PARTS_NO_PART", "-", _("No part selected/named")); render_parts_ui(app); return; }
-    }
-    parts_ui_report_init(&app->parts_report);
-    if (parts_ui_configure_instance(&app->parts_ctx, iid, pname, launcher_board_id(app->cfg.board), app->profile.metadata.id, NULL, 0, true, &app->parts_report) == 0) {
-        (void)parts_ui_set_instance_state(&app->parts_ctx, iid, PARTS_UI_SUPPORT_NEEDS_RUNTIME_HOST, false, _("configured (cosim runtime pending)"), NULL);
-        parts_ui_report_add(&app->parts_report, PARTS_UI_DIAG_INFO, "PARTS_INST_OK", iid, _("Instance '%s' configured for part '%s' (needs-runtime-host)"), iid, pname);
-    }
-    (void)parts_ui_validate(&app->parts_ctx, &app->parts_report);
-    render_parts_ui(app);
-}
-static void on_parts_remove_instance(GtkButton *b, gpointer data) {
-    (void)b; App *app = (App*)data; if (!app) return;
-    const char *iid = etext(app->entry_parts_instance_id);
-    parts_ui_report_init(&app->parts_report);
-    if (iid && iid[0] && parts_ui_remove_instance(&app->parts_ctx, iid) == 0)
-        parts_ui_report_add(&app->parts_report, PARTS_UI_DIAG_INFO, "PARTS_INST_REMOVED", iid, _("Instance removed: %s"), iid);
-    else
-        parts_ui_report_add(&app->parts_report, PARTS_UI_DIAG_WARN, "PARTS_INST_NOT_FOUND", iid?iid:"-", _("Instance not found"));
-    (void)parts_ui_validate(&app->parts_ctx, &app->parts_report);
-    render_parts_ui(app);
-}
-static void on_parts_validate(GtkButton *b, gpointer data) {
-    (void)b; App *app = (App*)data; if (!app) return;
-    parts_ui_report_init(&app->parts_report);
-    app->parts_ctx.host_cosim_board_available = app->cfg.cosim_board_path[0] != '\0';
-    int rc = parts_ui_validate(&app->parts_ctx, &app->parts_report);
-    parts_ui_report_add(&app->parts_report, rc == 0 ? PARTS_UI_DIAG_INFO : PARTS_UI_DIAG_WARN,
-                        rc == 0 ? "PARTS_VALIDATE_OK" : "PARTS_VALIDATE_ERR", "-",
-                        rc == 0 ? _("Validation passed with no errors (conflicts/capabilities checked)") : _("Validation found errors/conflicts"));
-    parts_ui_report_add(&app->parts_report, PARTS_UI_DIAG_INFO, "PARTS_RUNTIME", "-",
-                        _("Cosim runtime integration: placeholder (needs-runtime-host / conditional esp-emu)."));
-    render_parts_ui(app);
 }
 
 static void choose_file_into_entry(App *app, GtkWidget *entry, const char *title, GtkFileChooserAction action) {
@@ -2181,6 +2190,11 @@ static void on_workflow_build(GtkButton *b, gpointer data) {
  * remove a card during a run, so every card swap on a running emulator is a controlled restart. ---- */
 static void card_changed(App *app, const char *msg) {
     append_launcher_log(app, msg);
+    /* the Storage page widgets are the source of apply_ui_to_cfg: push the changed identity into them first */
+    app->ui_syncing = TRUE;
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(app->check_sd_enabled), app->cfg.sd_enabled);
+    eset(app->entry_sd_image, app->cfg.sd_image_path);
+    app->ui_syncing = FALSE;
     apply_ui_to_cfg(app); /* also copies the card fields into the in-memory profile */
     set_dirty(app, TRUE); /* the card belongs to the profile: Save or the quit dialog writes it */
     save_conf_only(app);
@@ -2216,8 +2230,6 @@ static void on_card_replace(GtkMenuItem *mi, gpointer data) {
 static void on_card_eject(GtkMenuItem *mi, gpointer data) {
     (void)mi; App *app = (App*)data; if (!app) return;
     app->cfg.sd_enabled = false;
-    /* the legacy SD checkbox feeds storage.sd.enabled (a second --sd after the tail "--"): keep it in step */
-    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(app->check_sd_enabled), FALSE);
     card_changed(app, _("[card] card ejected (--no-sd on next start)"));
 }
 static void on_card_exit(SimProc *proc, gint wait_status, gpointer user_data) {
@@ -2265,24 +2277,69 @@ static void on_card_extract(GtkMenuItem *mi, gpointer data) {
     gchar *cmd = g_strdup_printf("./start.sh card extract --force %s %s", qi, qd);
     card_run(app, cmd); g_free(cmd); g_free(qd); g_free(qi); g_free(dir);
 }
-static void on_card_open_folder(GtkMenuItem *mi, gpointer data) {
-    (void)mi; App *app = (App*)data; if (!app) return;
-    gchar *p = g_build_filename(app->repo_root, "simulator", "SD_Card", NULL);
-    gchar *uri = g_filename_to_uri(p, NULL, NULL);
+/* Opens an absolute directory in the desktop file manager. */
+static void open_dir_in_files(App *app, const char *abs_dir) {
+    gchar *uri = g_filename_to_uri(abs_dir, NULL, NULL);
     GError *err = NULL;
     if (!uri || !g_app_info_launch_default_for_uri(uri, NULL, &err)) {
-        append_launcher_log(app, _("[card] could not open simulator/SD_Card (xdg-open)"));
+        gchar *m = g_strdup_printf(_("[card] could not open %s (xdg-open)"), abs_dir);
+        append_launcher_log(app, m); g_free(m);
         if (err) { append_launcher_log(app, err->message); g_clear_error(&err); }
     }
-    g_free(p); g_free(uri);
+    g_free(uri);
+}
+/* Card folder: cfg.sd_dir when set, else simulator/SD_Card. */
+static void on_card_open_folder(GtkMenuItem *mi, gpointer data) {
+    (void)mi; App *app = (App*)data; if (!app) return;
+    char abs[PATH_MAX];
+    if (app->cfg.sd_dir[0]) resolve_repo_path(app, app->cfg.sd_dir, abs, sizeof(abs));
+    else snprintf(abs, sizeof(abs), "%s/simulator/SD_Card", app->repo_root);
+    open_dir_in_files(app, abs);
+}
+/* Storage page [Open folder] next to the image path: the folder that holds the card image. */
+static void on_card_open_image_folder(GtkButton *b, gpointer data) {
+    (void)b; App *app = (App*)data; if (!app) return;
+    char abs[PATH_MAX];
+    resolve_repo_path(app, app->cfg.sd_image_path, abs, sizeof(abs));
+    gchar *dir = g_path_get_dirname(abs);
+    open_dir_in_files(app, dir);
+    g_free(dir);
+}
+/* Storage page [Open] next to the card folder entry. */
+static void on_card_open_dir_button(GtkButton *b, gpointer data) { (void)b; on_card_open_folder(NULL, data); }
+/* Storage page buttons reuse the menu handlers (they ignore the widget argument). */
+static void on_card_replace_button(GtkButton *b, gpointer data) { (void)b; on_card_replace(NULL, data); }
+static void on_card_build_button(GtkButton *b, gpointer data) { (void)b; on_card_build(NULL, data); }
+static void on_card_extract_button(GtkButton *b, gpointer data) { (void)b; on_card_extract(NULL, data); }
+static void on_card_eject_button(GtkButton *b, gpointer data) { (void)b; on_card_eject(NULL, data); }
+
+/* Simulator > Rotate screen: next boot rotation (0..3), then a controlled restart when the emulator runs. */
+static void on_rotate_screen(GtkMenuItem *mi, gpointer data) {
+    (void)mi; App *app = (App*)data; if (!app) return;
+    gboolean running = app->emu_proc && sim_proc_is_running(app->emu_proc);
+    int cur = (running && app->host) ? sim_host_hw_rot(app->host) : app->cfg.hw_rotation;
+    int next = (cur + 1) & 3;
+    app->ui_syncing = TRUE; gtk_spin_button_set_value(GTK_SPIN_BUTTON(app->spin_rot), next); app->ui_syncing = FALSE;
+    on_cfg_changed(NULL, app);   /* collects the spinner into cfg and the profile, marks the profile dirty */
+    write_hw_state(app);
+    gchar *m = g_strdup_printf(_("[launcher] rotate screen: hw rotation %d -> %d"), cur & 3, next);
+    append_launcher_log(app, m); g_free(m);
+    if (running) on_restart(NULL, app);
 }
 
+/* Bold section heading used to group rows on a config page (Runtime: Run, Audio, Network). */
+static GtkWidget *section_label(const char *text) {
+    GtkWidget *l = gtk_label_new(NULL); gchar *m = g_markup_printf_escaped("<b>%s</b>", text);
+    gtk_label_set_markup(GTK_LABEL(l), m); g_free(m);
+    gtk_label_set_xalign(GTK_LABEL(l), 0.0); gtk_widget_set_margin_top(l, 6);
+    return l;
+}
 /* ---- Nav rail + drawer: the rail items pick a config page, a second click on the open page closes the drawer. ---- */
 static void nav_sync(App *app) {
     if (!app->w_cfg_panel) return;
     gboolean vis = gtk_widget_get_visible(app->w_cfg_panel);
     int cur = gtk_notebook_get_current_page(GTK_NOTEBOOK(app->notebook_cfg));
-    static const char *titles[4] = { N_("PROFILE / FIRMWARE"), N_("RUNTIME / AUDIO / NETWORK"), N_("Merge / Run"), N_("STORAGE / PARTS") };
+    static const char *titles[4] = { N_("PROFILE / FIRMWARE"), N_("RUNTIME / AUDIO / NETWORK"), N_("STORAGE · SD · LITTLEFS"), N_("COMPONENTS") };
     for (int i = 0; i < 4; i++) {
         GtkStyleContext *sc = gtk_widget_get_style_context(app->rail_btn[i]);
         if (vis && i == cur) gtk_style_context_add_class(sc, "active"); else gtk_style_context_remove_class(sc, "active");
@@ -2480,6 +2537,10 @@ static void drawer_wrap_all(GtkWidget *w) {
             gtk_label_set_width_chars(GTK_LABEL(w), 8);
             gtk_label_set_max_width_chars(GTK_LABEL(w), 40);
         }
+    } else if (GTK_IS_BUTTON(w)) {
+        /* long button labels (Browse..., Open merge wizard) ellipsize instead of widening the drawer */
+        GtkWidget *bl = gtk_bin_get_child(GTK_BIN(w));
+        if (GTK_IS_LABEL(bl)) { gtk_label_set_ellipsize(GTK_LABEL(bl), PANGO_ELLIPSIZE_END); gtk_label_set_max_width_chars(GTK_LABEL(bl), 24); }
     } else if (GTK_IS_ENTRY(w)) {
         gtk_entry_set_width_chars(GTK_ENTRY(w), 10);
         gtk_widget_set_hexpand(w, TRUE);
@@ -2522,8 +2583,8 @@ static void sync_ui_from_state(App *app){
         eset(app->entry_littlefs_size, num);
     }
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(app->check_littlefs_enabled), app->cfg.storage.littlefs.enabled);
-    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(app->check_sd_enabled), app->cfg.storage.sd.enabled);
-    eset(app->entry_sd_image, app->cfg.storage.sd.image_path);
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(app->check_sd_enabled), app->cfg.sd_enabled);
+    eset(app->entry_sd_image, app->cfg.sd_image_path);
     eset(app->entry_sd_dir, app->cfg.sd_dir);
     gtk_combo_box_set_active(GTK_COMBO_BOX(app->combo_sd_mode),
                              app->cfg.storage.sd.mode == SLFS_SD_MODE_SDSPI ? 1 :
@@ -2534,6 +2595,17 @@ static void sync_ui_from_state(App *app){
         eset(app->entry_sd_slot, num);
         snprintf(num, sizeof(num), "%d", app->cfg.storage.sd.cs_pin);
         eset(app->entry_sd_cs, num);
+    }
+    if (app->spin_bat_capacity) {
+        const launcher_battery_t *bt = &app->cfg.battery;
+        gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(app->check_bat_present), bt->present);
+        gtk_spin_button_set_value(GTK_SPIN_BUTTON(app->spin_bat_capacity), bt->capacity_mah);
+        gtk_spin_button_set_value(GTK_SPIN_BUTTON(app->spin_bat_initial), bt->initial_percent);
+        gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(app->check_bat_charging), bt->charging);
+        gtk_spin_button_set_value(GTK_SPIN_BUTTON(app->spin_bat_charge_ma), bt->charge_current_ma);
+        gtk_spin_button_set_value(GTK_SPIN_BUTTON(app->spin_bat_time_scale), bt->time_scale);
+        const int ma[5] = { bt->ma_base, bt->ma_wifi, bt->ma_ble, bt->ma_backlight, bt->ma_audio };
+        for (int i = 0; i < 5; ++i) gtk_spin_button_set_value(GTK_SPIN_BUTTON(app->spin_bat_ma[i]), ma[i]);
     }
     gtk_spin_button_set_value(GTK_SPIN_BUTTON(app->spin_lcd_w), app->cfg.lcd_w);
     gtk_spin_button_set_value(GTK_SPIN_BUTTON(app->spin_lcd_h), app->cfg.lcd_h);
@@ -2617,7 +2689,11 @@ static void save_ui_layout_to_cfg(App *app) {
     app->cfg.ui_window_maximized = gtk_window_is_maximized(GTK_WINDOW(app->window));
     if (app->paned_main) app->cfg.ui_paned_main_pos = gtk_paned_get_position(GTK_PANED(app->paned_main));
     if (app->paned_right) app->cfg.ui_paned_bottom_pos = gtk_paned_get_position(GTK_PANED(app->paned_right));
-    if (app->notebook_cfg) app->cfg.ui_tab_config = gtk_notebook_get_current_page(GTK_NOTEBOOK(app->notebook_cfg));
+    if (app->notebook_cfg) {
+        /* Saved in the legacy numbering that restore_ui_layout() maps: Storage -> 3, Components -> 4. */
+        int p = gtk_notebook_get_current_page(GTK_NOTEBOOK(app->notebook_cfg));
+        app->cfg.ui_tab_config = (p >= 2) ? p + 1 : p;
+    }
     if (app->notebook_bottom) app->cfg.ui_tab_bottom = gtk_notebook_get_current_page(GTK_NOTEBOOK(app->notebook_bottom));
     if (app->notebook_logs) app->cfg.ui_tab_log = gtk_notebook_get_current_page(GTK_NOTEBOOK(app->notebook_logs));
     if (app->entry_log_filter) snprintf(app->cfg.ui_log_search, sizeof(app->cfg.ui_log_search), "%s", etext(app->entry_log_filter));
@@ -2632,28 +2708,18 @@ static void restore_ui_layout(App *app) {
         gtk_window_resize(GTK_WINDOW(app->window), app->cfg.ui_window_w, app->cfg.ui_window_h);
     if (app->cfg.ui_window_has_pos) gtk_window_move(GTK_WINDOW(app->window), app->cfg.ui_window_x, app->cfg.ui_window_y);
     if (app->cfg.ui_window_maximized) gtk_window_maximize(GTK_WINDOW(app->window));
-    if (app->notebook_cfg && app->cfg.ui_tab_config >= 0) gtk_notebook_set_current_page(GTK_NOTEBOOK(app->notebook_cfg), app->cfg.ui_tab_config);
+    if (app->notebook_cfg && app->cfg.ui_tab_config >= 0) {
+        /* Old layout: 0 Profile, 1 Runtime, 2 Merge/Run, 3 Storage. New: 0 Profile, 1 Runtime, 2 Storage, 3 Components. */
+        int p = app->cfg.ui_tab_config;
+        if (p == 3) p = 2; else if (p == 2) p = 0;
+        if (p > 3) p = 3;
+        gtk_notebook_set_current_page(GTK_NOTEBOOK(app->notebook_cfg), p);
+    }
     if (app->entry_log_filter && app->cfg.ui_log_search[0]) eset(app->entry_log_filter, app->cfg.ui_log_search);
     if (app->combo_log_level && app->cfg.ui_log_min_level >= 0) gtk_combo_box_set_active(GTK_COMBO_BOX(app->combo_log_level), app->cfg.ui_log_min_level);
     if (app->combo_log_origin && app->cfg.ui_log_origin_mask <= 16) gtk_combo_box_set_active(GTK_COMBO_BOX(app->combo_log_origin), (gint)app->cfg.ui_log_origin_mask);
     if (app->check_log_follow) gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(app->check_log_follow), app->cfg.ui_log_follow);
     app->restoring_layout = FALSE;
-}
-static void refresh_parts_runtime_hints(App *app) {
-    if (!app) return;
-    app->parts_ctx.host_cosim_board_available = app->cfg.cosim_board_path[0] != '\0';
-    app->parts_ctx.host_cosim_tcp_available = true;
-    parts_ui_set_context_capabilities(&app->parts_ctx,
-        app->parts_ctx.esp_emu_version[0] ? app->parts_ctx.esp_emu_version : "unknown",
-        "esp-emu",
-        app->parts_ctx.esp_emu_has_wasm_parts,
-        app->parts_ctx.esp_emu_has_control_part_cmds,
-        app->cfg.cosim_board_path[0] != '\0',
-        true,
-        true,
-        app->cfg.cosim_board_path[0] != '\0');
-    parts_ui_set_cosim_board_path(&app->parts_ctx, app->cfg.cosim_board_path, app->cfg.cosim_board_path[0] != '\0');
-    render_parts_ui(app);
 }
 static void render_debug_gpio_panels(App *app) {
     if (!app) return;
@@ -2662,7 +2728,7 @@ static void render_debug_gpio_panels(App *app) {
         bool gdb_on = app->check_gdb_enabled && gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(app->check_gdb_enabled));
         bool trace_on = app->check_trace_enabled && gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(app->check_trace_enabled));
         g_string_append_printf(g, _("Debug/Profiler (available data, factual)\n"));
-        g_string_append(g, _("Read-only status. Set GDB and Trace in Runtime/Audio/Network.\n"));
+        g_string_append(g, _("Read-only status. GDB and Trace controls are above this text.\n"));
         g_string_append_printf(g, "GDB: %s", gdb_on?_("configured (--gdb, conditional esp-emu+ELF+gdb)"):_("inactive"));
         if (gdb_on) { sim_ports_t ports; app_ports(app, &ports); g_string_append_printf(g, " port=%d%s", ports.gdb, (app->check_gdb_halt&&gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(app->check_gdb_halt)))?" halt":""); }
         g_string_append(g, "\n");
@@ -2710,6 +2776,174 @@ static void render_debug_gpio_panels(App *app) {
     }
 }
 
+/* ---- Storage and Components pages (drawer rail items 3 and 4). Vertical rows, no wide grids. ---- */
+static GtkWidget *page_frame(const char *title, GtkWidget **inner) {
+    GtkWidget *f = gtk_frame_new(title); gtk_widget_set_halign(f, GTK_ALIGN_FILL);
+    GtkWidget *b = gtk_box_new(GTK_ORIENTATION_VERTICAL, 6); gtk_container_set_border_width(GTK_CONTAINER(b), 8);
+    gtk_container_add(GTK_CONTAINER(f), b);
+    *inner = b;
+    return f;
+}
+static GtkWidget *ro_label(const char *text) {   /* wrapped, selectable, read-only text row */
+    GtkWidget *l = wrap_label(text);
+    gtk_label_set_selectable(GTK_LABEL(l), TRUE);
+    return l;
+}
+static GtkWidget *small_button(const char *label, GCallback cb, gpointer data, const char *tip) {
+    GtkWidget *b = gtk_button_new_with_label(label);
+    g_signal_connect(b, "clicked", cb, data);
+    if (tip) gtk_widget_set_tooltip_text(b, tip);
+    return b;
+}
+
+static GtkWidget *build_storage_page(App *app) {
+    GtkWidget *page = gtk_box_new(GTK_ORIENTATION_VERTICAL, 6); gtk_container_set_border_width(GTK_CONTAINER(page), 8);
+    GtkWidget *in;
+
+    /* ---- SD card: one identity (inserted flag, image, folder). The Card menu drives the same fields. ---- */
+    GtkWidget *f_sd = page_frame(_("SD card"), &in);
+    app->lbl_sd_status = ro_label("");
+    gtk_box_pack_start(GTK_BOX(in), app->lbl_sd_status, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(in), app->check_sd_enabled, FALSE, FALSE, 0);
+    gtk_editable_set_editable(GTK_EDITABLE(app->entry_sd_image), FALSE);
+    GtkWidget *img_row = with_browse(app->entry_sd_image, _("Browse…"), G_CALLBACK(on_card_replace_button), app,
+                                     _("Choose another card image (.img). A running emulator restarts to apply it"));
+    gtk_box_pack_start(GTK_BOX(img_row), small_button(_("Open folder"), G_CALLBACK(on_card_open_image_folder), app,
+                                                     _("Open the folder that holds the card image")), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(in), labeled(_("Card image"), img_row), FALSE, FALSE, 0);
+    GtkWidget *dir_row = with_browse(app->entry_sd_dir, _("Browse…"), G_CALLBACK(on_browse_sd_dir), app,
+                                     _("Choose the folder whose contents become the card"));
+    gtk_box_pack_start(GTK_BOX(dir_row), small_button(_("Open"), G_CALLBACK(on_card_open_dir_button), app,
+                                                     _("Open the card folder (simulator/SD_Card when none is set)")), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(in), labeled(_("Card folder (synced into the image on Start)"), dir_row), FALSE, FALSE, 0);
+    GtkWidget *fb = gtk_flow_box_new(); gtk_flow_box_set_selection_mode(GTK_FLOW_BOX(fb), GTK_SELECTION_NONE);
+    gtk_flow_box_set_max_children_per_line(GTK_FLOW_BOX(fb), 3); gtk_flow_box_set_homogeneous(GTK_FLOW_BOX(fb), FALSE);
+    gtk_flow_box_set_column_spacing(GTK_FLOW_BOX(fb), 6); gtk_flow_box_set_row_spacing(GTK_FLOW_BOX(fb), 6);
+    gtk_container_add(GTK_CONTAINER(fb), small_button(_("Build image from folder…"), G_CALLBACK(on_card_build_button), app,
+                                                      _("Replace the card image with the contents of a folder (the emulator must be stopped)")));
+    gtk_container_add(GTK_CONTAINER(fb), small_button(_("Extract…"), G_CALLBACK(on_card_extract_button), app,
+                                                      _("Copy the files of the card image into a folder")));
+    gtk_container_add(GTK_CONTAINER(fb), small_button(_("Eject"), G_CALLBACK(on_card_eject_button), app,
+                                                      _("Remove the card: the next start runs with --no-sd")));
+    gtk_box_pack_start(GTK_BOX(in), fb, FALSE, FALSE, 0);
+    GtkWidget *ex = gtk_expander_new(_("SD bus (hints, not sent to esp-emu)")); gtk_expander_set_expanded(GTK_EXPANDER(ex), FALSE);
+    GtkWidget *exb = gtk_box_new(GTK_ORIENTATION_VERTICAL, 6); gtk_container_set_border_width(GTK_CONTAINER(exb), 4);
+    gtk_box_pack_start(GTK_BOX(exb), labeled(_("Bus mode"), app->combo_sd_mode), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(exb), labeled(_("Slot"), app->entry_sd_slot), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(exb), labeled(_("CS pin (SPI SD only)"), app->entry_sd_cs), FALSE, FALSE, 0);
+    gtk_container_add(GTK_CONTAINER(ex), exb);
+    gtk_box_pack_start(GTK_BOX(in), ex, FALSE, FALSE, 0);
+    app->lbl_sd_pins = ro_label("");
+    gtk_box_pack_start(GTK_BOX(in), app->lbl_sd_pins, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(page), f_sd, FALSE, FALSE, 0);
+
+    /* ---- LittleFS: used only by the merge step (not an esp-emu run argument) ---- */
+    GtkWidget *f_lfs = page_frame(_("LittleFS (flash partition)"), &in);
+    gtk_box_pack_start(GTK_BOX(in), app->check_littlefs_enabled, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(in), labeled(_("LittleFS image"), with_browse(app->entry_littlefs, _("Browse…"), G_CALLBACK(on_browse_littlefs), app,
+                                                                             _("Choose the LittleFS image"))), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(in), labeled(_("Partition label"), app->entry_littlefs_label), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(in), labeled(_("Mount path"), app->entry_littlefs_mount), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(in), labeled(_("Partition offset"), app->entry_littlefs_offset), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(in), labeled(_("Partition size"), app->entry_littlefs_size), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(in), wrap_label(_("Used in the merge step only (not a run argument). The SD card is separate.")), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(page), f_lfs, FALSE, FALSE, 0);
+
+    drawer_wrap_all(page);
+    return page;
+}
+
+/* Battery edits mark the block as configured (it is then written to the profile and sent to esp-emu). */
+static void on_battery_edited(GtkWidget *w, gpointer data) {
+    App *app = (App*)data; if (!app || app->ui_syncing) return;
+    app->cfg.battery.configured = 1;
+    on_cfg_changed(w, app);
+}
+
+static GtkWidget *battery_spin(App *app, int lo, int hi, const char *tip) {
+    GtkWidget *s = gtk_spin_button_new_with_range(lo, hi, 1);
+    g_signal_connect(s, "value-changed", G_CALLBACK(on_battery_edited), app);
+    gtk_widget_set_tooltip_text(s, tip);
+    return s;
+}
+
+static GtkWidget *build_components_page(App *app) {
+    GtkWidget *page = gtk_box_new(GTK_ORIENTATION_VERTICAL, 6); gtk_container_set_border_width(GTK_CONTAINER(page), 8);
+    GtkWidget *in;
+
+    /* ---- Display (LCD): size and boot rotation are editable, the controller is read-only ---- */
+    GtkWidget *f_lcd = page_frame(_("Display (LCD)"), &in);
+    GtkWidget *wh = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8); gtk_box_set_homogeneous(GTK_BOX(wh), TRUE);
+    gtk_box_pack_start(GTK_BOX(wh), labeled(_("LCD W (0=default)"), app->spin_lcd_w), TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(wh), labeled(_("LCD H (0=default)"), app->spin_lcd_h), TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(in), wh, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(in), labeled(_("HW rot"), app->spin_rot), FALSE, FALSE, 0);
+    app->lbl_comp_display = ro_label("");
+    gtk_box_pack_start(GTK_BOX(in), app->lbl_comp_display, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(page), f_lcd, FALSE, FALSE, 0);
+
+    /* ---- Touch: read-only (from the profile and the board catalog) ---- */
+    GtkWidget *f_touch = page_frame(_("Touch"), &in);
+    app->lbl_comp_touch = ro_label("");
+    gtk_box_pack_start(GTK_BOX(in), app->lbl_comp_touch, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(in), wrap_label(_("Read-only. Touch is edited in the profile JSON (board_hardware.touch).")), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(page), f_touch, FALSE, FALSE, 0);
+
+    /* ---- SD card: pointer to the Storage page ---- */
+    GtkWidget *f_sd = page_frame(_("SD card"), &in);
+    gtk_box_pack_start(GTK_BOX(in), wrap_label(_("The card image and folder are on the Storage page.")), FALSE, FALSE, 0);
+    app->lbl_comp_sd_pins = ro_label("");
+    gtk_box_pack_start(GTK_BOX(in), app->lbl_comp_sd_pins, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(page), f_sd, FALSE, FALSE, 0);
+
+    /* ---- Audio codec: read-only ---- */
+    GtkWidget *f_au = page_frame(_("Audio codec"), &in);
+    app->lbl_comp_audio = ro_label("");
+    gtk_box_pack_start(GTK_BOX(in), app->lbl_comp_audio, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(in), wrap_label(_("Read-only. Audio files and instance are on the Runtime page.")), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(page), f_au, FALSE, FALSE, 0);
+
+    /* ---- Battery: simulated by the firmware model (ES3C28P emulator build); values reach esp-emu as an I2C register file ---- */
+    GtkWidget *f_bat = page_frame(_("Battery (simulated)"), &in);
+    app->check_bat_present = gtk_check_button_new_with_label(_("Battery present"));
+    g_signal_connect(app->check_bat_present, "toggled", G_CALLBACK(on_battery_edited), app);
+    gtk_widget_set_tooltip_text(app->check_bat_present, _("Unchecked: the firmware reports no battery (0.0 V, 0 %)"));
+    gtk_box_pack_start(GTK_BOX(in), app->check_bat_present, FALSE, FALSE, 0);
+    app->spin_bat_capacity = battery_spin(app, 50, 20000, _("Capacity in mAh. The default is a placeholder, not an ES3C28P figure"));
+    gtk_box_pack_start(GTK_BOX(in), labeled(_("Capacity (mAh)"), app->spin_bat_capacity), FALSE, FALSE, 0);
+    app->spin_bat_initial = battery_spin(app, 0, 100, _("Charge level at boot, in percent"));
+    gtk_box_pack_start(GTK_BOX(in), labeled(_("Initial charge (%)"), app->spin_bat_initial), FALSE, FALSE, 0);
+    app->check_bat_charging = gtk_check_button_new_with_label(_("Charger connected"));
+    g_signal_connect(app->check_bat_charging, "toggled", G_CALLBACK(on_battery_edited), app);
+    gtk_widget_set_tooltip_text(app->check_bat_charging, _("The model charges the battery while this is checked"));
+    gtk_box_pack_start(GTK_BOX(in), app->check_bat_charging, FALSE, FALSE, 0);
+    app->spin_bat_charge_ma = battery_spin(app, 0, 3000, _("Charge current in mA. The default is a placeholder, not an ES3C28P figure"));
+    gtk_box_pack_start(GTK_BOX(in), labeled(_("Charge current (mA)"), app->spin_bat_charge_ma), FALSE, FALSE, 0);
+    app->spin_bat_time_scale = battery_spin(app, 1, 255, _("The model runs this many times faster than emulated time (1 = real time)"));
+    gtk_box_pack_start(GTK_BOX(in), labeled(_("Time scale (x)"), app->spin_bat_time_scale), FALSE, FALSE, 0);
+    static const char *ma_label[5] = { N_("Base load (mA)"), N_("Wi-Fi load (mA)"), N_("BLE load (mA)"), N_("Backlight at full (mA)"), N_("Audio load (mA)") };
+    static const char *ma_tip[5] = {
+        N_("Idle consumption. 0 = firmware default (45 mA, a placeholder copied from the T-Deck estimate, not ES3C28P data)"),
+        N_("Added while Wi-Fi is connected. 0 = firmware default (70 mA, placeholder from the T-Deck estimate, not ES3C28P data)"),
+        N_("Added while BLE is enabled. 0 = firmware default (0 mA, placeholder)"),
+        N_("Added at full backlight, scaled by the duty. 0 = firmware default (0 mA, placeholder)"),
+        N_("Added while audio plays. 0 = firmware default (0 mA, placeholder)") };
+    for (int i = 0; i < 5; ++i) {
+        app->spin_bat_ma[i] = battery_spin(app, 0, 5000, _(ma_tip[i]));
+        gtk_box_pack_start(GTK_BOX(in), labeled(_(ma_label[i]), app->spin_bat_ma[i]), FALSE, FALSE, 0);
+    }
+    gtk_box_pack_start(GTK_BOX(in), wrap_label(_("Defaults are placeholders, not measured hardware figures. 0 = firmware default. Battery ADC: GPIO 9. ES3C28P emulator build only.")), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(page), f_bat, FALSE, FALSE, 0);
+
+    /* ---- Network radio: read-only pointer ---- */
+    GtkWidget *f_net = page_frame(_("Network radio"), &in);
+    gtk_box_pack_start(GTK_BOX(in), wrap_label(_("Wi-Fi, BLE and network are set on the Runtime page. esp-emu 1.1.0 provides one access point, taken from the SSID and auth set there.")), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(page), f_net, FALSE, FALSE, 0);
+
+    drawer_wrap_all(page);
+    return page;
+}
+
 int main(int argc, char **argv){
     /* Language first: gettext must be bound before any string or widget is created. */
     char ui_lang[LAUNCHER_MAX_SHORT];
@@ -2717,19 +2951,13 @@ int main(int argc, char **argv){
     i18n_init(ui_lang);
     for(int i=1;i<argc;i++) if(!strcmp(argv[i],"--help")||!strcmp(argv[i],"-h")){ print_usage(); return 0; }
     gdk_set_allowed_backends("x11,*"); gtk_init(&argc,&argv);
-    App app = {0}; app.emu_proc = sim_proc_new(); app.bridge_proc = sim_proc_new(); app.build_proc = sim_proc_new();
+    App app = {0}; app.host_rot_seen = -1; app.emu_proc = sim_proc_new(); app.bridge_proc = sim_proc_new(); app.build_proc = sim_proc_new();
     app.clog = clog_new(4000);
     emu_caps_probe_init(&app.caps);
     emu_caps_probe_set_path(&app.caps, EMU_DEFAULT_PATH);
     if (getcwd(app.repo_root,sizeof(app.repo_root))==NULL) snprintf(app.repo_root,sizeof(app.repo_root),".");
     sim_profile_init(&app.profile); load_profile_or_migrate(&app); launcher_config_resolve_paths(&app.cfg);
     telem_init(&app.telem); telem_set_capabilities_defaults(&app.telem);
-    parts_ui_context_init(&app.parts_ctx); parts_ui_report_init(&app.parts_report);
-    app.parts_ctx.host_cosim_tcp_available = true;
-    app.parts_ctx.host_cosim_board_available = app.cfg.cosim_board_path[0] != '\0';
-    app.parts_ctx.esp_emu_has_wasm_parts = false; /* conditional(version/tool) */
-    app.parts_ctx.esp_emu_has_control_part_cmds = false;
-    snprintf(app.parts_ctx.esp_emu_version, sizeof(app.parts_ctx.esp_emu_version), "unknown");
 
     app.window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     gtk_window_set_title(GTK_WINDOW(app.window), _("ESP32 Simulator (Unified)"));
@@ -2764,7 +2992,6 @@ int main(int argc, char **argv){
     gtk_widget_set_tooltip_text(app.lbl_timer, _("Time since the emulator started"));
     app.lbl_badge = gtk_label_new(_("STOPPED")); gtk_style_context_add_class(gtk_widget_get_style_context(app.lbl_badge), "badge"); gtk_style_context_add_class(gtk_widget_get_style_context(app.lbl_badge), "badge-stopped");
     gtk_widget_set_tooltip_text(app.lbl_badge, _("Emulator state. RUNNING appears 2 s after the host connects"));
-    gtk_box_pack_end(GTK_BOX(toolbar), app.lbl_timer, FALSE,FALSE,0);
     gtk_box_pack_end(GTK_BOX(toolbar), app.lbl_badge, FALSE,FALSE,0);
     /* single status line (profile, dirty flag, run state, esp-emu version, SD state): lives in the status bar; the long text is its tooltip */
     app.status_label = gtk_label_new(_("Stopped")); gtk_widget_set_halign(app.status_label, GTK_ALIGN_START);
@@ -2776,9 +3003,9 @@ int main(int argc, char **argv){
     /* nav rail: one flat button per config page; the active one has the orange left bar */
     GtkWidget *rail = gtk_box_new(GTK_ORIENTATION_VERTICAL,0); gtk_style_context_add_class(gtk_widget_get_style_context(rail), "rail"); gtk_box_pack_start(GTK_BOX(body), rail, FALSE, FALSE, 0);
     {
-        static const char *rn[4] = { N_("Profile"), N_("Runtime"), N_("Merge / Run"), N_("Storage") };
-        static const char *rs[4] = { N_("Firmware"), N_("Audio · Network"), N_("Merge · Run modes"), N_("Parts · LittleFS") };
-        static const char *rt[4] = { N_("Profile and firmware settings"), N_("Runtime, audio, network, LittleFS and SD settings"), N_("Run mode notes. The merge wizard is not built yet"), N_("Parts (WASM) list. LittleFS and SD are on the Runtime page") };
+        static const char *rn[4] = { N_("Profile"), N_("Runtime"), N_("Storage"), N_("Components") };
+        static const char *rs[4] = { N_("Firmware"), N_("Audio · Network"), N_("SD · LittleFS"), N_("Components") };
+        static const char *rt[4] = { N_("Profile and firmware settings"), N_("Run mode, audio and network settings"), N_("SD card and LittleFS: images, folders and mount"), N_("Components: LCD, touch, SD, audio, battery") };
         for (int i = 0; i < 4; i++) {
             gchar *m = g_strdup_printf("%s\n<span size=\"small\" foreground=\"#7d8a99\">%s</span>", _(rn[i]), _(rs[i]));
             GtkWidget *l = gtk_label_new(NULL); gtk_label_set_markup(GTK_LABEL(l), m); g_free(m); gtk_label_set_xalign(GTK_LABEL(l), 0.0);
@@ -2844,10 +3071,8 @@ int main(int argc, char **argv){
     gtk_grid_attach(GTK_GRID(tab_main), app.check_use_elf, 0,5,2,1);
     gtk_grid_attach(GTK_GRID(tab_main), labeled(_("Custom firmware path (legacy)"), app.entry_custom), 0,6,2,1);
     gtk_grid_attach(GTK_GRID(tab_main), labeled(_("Cosim board JSON"), with_browse(app.entry_cosim_board,_("Browse"),G_CALLBACK(on_browse_cosim),&app,_("Choose the cosim board JSON"))), 0,7,2,1);
-    gtk_grid_attach(GTK_GRID(tab_main), labeled(_("LCD W (0=default)"), app.spin_lcd_w), 0,8,1,1);
-    gtk_grid_attach(GTK_GRID(tab_main), labeled(_("LCD H (0=default)"), app.spin_lcd_h), 1,8,1,1);
-    gtk_grid_attach(GTK_GRID(tab_main), labeled(_("Scale"), app.spin_scale), 0,9,1,1);
-    gtk_grid_attach(GTK_GRID(tab_main), labeled(_("HW rot"), app.spin_rot), 1,9,1,1);
+    /* LCD W/H and HW rot moved to the Components page (build_components_page) */
+    gtk_grid_attach(GTK_GRID(tab_main), labeled(_("Canvas zoom"), app.spin_scale), 0,8,1,1);
     gtk_widget_set_tooltip_text(app.entry_profile_path, _("Profile file that Save writes. Empty uses profiles/active.json"));
     /* the tooltip becomes the full path once a profile is shown (profile_field_set) */
     gtk_widget_set_tooltip_text(app.combo_board, _("Board from boards/*.json. Sets cosim board and display size defaults"));
@@ -2857,10 +3082,10 @@ int main(int argc, char **argv){
     gtk_widget_set_tooltip_text(app.entry_elf, _("ELF with symbols. Used only when Use ELF is checked"));
     gtk_widget_set_tooltip_text(app.entry_custom, _("Old custom firmware path. Used only with Custom firmware selected"));
     gtk_widget_set_tooltip_text(app.spin_scale, _("Whole-number zoom of the LCD on the canvas (1 to 4)"));
-    gtk_widget_set_tooltip_text(app.spin_rot, _("Hardware rotation of the LCD and touch, 0 to 3"));
+    gtk_widget_set_tooltip_text(app.spin_rot, _("Rotation the firmware starts with; changes made in the firmware Settings are followed"));
 
     GtkWidget *tab_runtime_sc = gtk_scrolled_window_new(NULL,NULL);
-    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(tab_runtime_sc),GTK_POLICY_AUTOMATIC,GTK_POLICY_AUTOMATIC);
+    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(tab_runtime_sc),GTK_POLICY_NEVER,GTK_POLICY_AUTOMATIC);
     gtk_notebook_append_page(GTK_NOTEBOOK(cfg_nb), tab_runtime_sc, gtk_label_new(_("Runtime/Audio/Network")));
     GtkWidget *tab_runtime = gtk_grid_new(); gtk_grid_set_row_spacing(GTK_GRID(tab_runtime),6); gtk_grid_set_column_spacing(GTK_GRID(tab_runtime),8); gtk_container_set_border_width(GTK_CONTAINER(tab_runtime),8);
     gtk_container_add(GTK_CONTAINER(tab_runtime_sc), tab_runtime);
@@ -2880,7 +3105,7 @@ int main(int argc, char **argv){
     app.entry_littlefs_mount = gtk_entry_new(); gtk_entry_set_placeholder_text(GTK_ENTRY(app.entry_littlefs_mount),_("mount path"));
     app.entry_littlefs_offset = gtk_entry_new(); gtk_entry_set_placeholder_text(GTK_ENTRY(app.entry_littlefs_offset),_("offset"));
     app.entry_littlefs_size = gtk_entry_new(); gtk_entry_set_placeholder_text(GTK_ENTRY(app.entry_littlefs_size),_("size"));
-    app.check_sd_enabled = gtk_check_button_new_with_label(_("SD (legacy: use the Card menu)"));
+    app.check_sd_enabled = gtk_check_button_new_with_label(_("Card inserted"));
     app.entry_sd_image = gtk_entry_new(); gtk_entry_set_placeholder_text(GTK_ENTRY(app.entry_sd_image),_("SD image (conditional)"));
     app.entry_sd_dir = gtk_entry_new();
     app.entry_sd_slot = gtk_entry_new(); gtk_entry_set_text(GTK_ENTRY(app.entry_sd_slot),"-1");
@@ -2891,7 +3116,6 @@ int main(int argc, char **argv){
     gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(app.combo_sd_mode), "none");
     app.spin_audio_instance = gtk_spin_button_new_with_range(-1,8,1);
     app.entry_audio_backend = gtk_entry_new(); gtk_entry_set_placeholder_text(GTK_ENTRY(app.entry_audio_backend),_("audio backend hint"));
-    app.check_net_enabled = gtk_check_button_new_with_label(_("Network enabled"));
     app.entry_net_mode = gtk_entry_new(); gtk_entry_set_placeholder_text(GTK_ENTRY(app.entry_net_mode),_("user/tap/openeth (conditional)"));
     app.entry_hostfwd = gtk_entry_new(); gtk_entry_set_placeholder_text(GTK_ENTRY(app.entry_hostfwd),_("hostfwd rules ; separated"));
     app.entry_wifi_ssid = gtk_entry_new(); app.entry_wifi_password = gtk_entry_new();
@@ -2907,6 +3131,7 @@ int main(int argc, char **argv){
     gtk_entry_set_text(GTK_ENTRY(app.entry_emu_caps), EMU_DEFAULT_PATH);
     GtkWidget *btn_refresh_caps = gtk_button_new_with_label(_("Refresh caps"));
     int rr=0;
+    gtk_grid_attach(GTK_GRID(tab_runtime), section_label(_("Run")), 0,rr,2,1); rr++;
     gtk_grid_attach(GTK_GRID(tab_runtime), labeled(_("Run mode"), app.combo_run_mode), 0,rr,2,1); rr++;
     gtk_grid_attach(GTK_GRID(tab_runtime), labeled(_("Instance"), app.spin_instance), 0,rr,2,1); rr++;
     gtk_grid_attach(GTK_GRID(tab_runtime), app.check_cosim_unix, 0,rr,1,1);
@@ -2919,20 +3144,17 @@ int main(int argc, char **argv){
     app.check_gdb_enabled = gtk_check_button_new_with_label(_("GDB stub (--gdb, conditional tool)"));
     app.spin_gdb_port = gtk_spin_button_new_with_range(1024,65535,1);
     app.check_gdb_halt = gtk_check_button_new_with_label(_("Halt on start (--gdb-halt)"));
-    gtk_grid_attach(GTK_GRID(tab_runtime), app.check_gdb_enabled, 0,rr,1,1);
-    gtk_grid_attach(GTK_GRID(tab_runtime), labeled(_("GDB port"), app.spin_gdb_port), 1,rr,1,1); rr++;
-    gtk_grid_attach(GTK_GRID(tab_runtime), app.check_gdb_halt, 0,rr,2,1); rr++;
     app.check_trace_enabled = gtk_check_button_new_with_label(_("Trace (--trace, conditional tool)"));
     app.entry_trace_path = gtk_entry_new(); gtk_entry_set_placeholder_text(GTK_ENTRY(app.entry_trace_path), "simulator/logs/emu.trace");
-    gtk_grid_attach(GTK_GRID(tab_runtime), app.check_trace_enabled, 0,rr,1,1);
-    gtk_grid_attach(GTK_GRID(tab_runtime), labeled(_("Trace path"), with_browse(app.entry_trace_path,_("Browse"),G_CALLBACK(on_browse_trace),&app,_("Choose the trace output file"))), 1,rr,1,1); rr++;
     gtk_grid_attach(GTK_GRID(tab_runtime), labeled(_("Extra args"), app.entry_extra), 0,rr,2,1); rr++;
+    gtk_grid_attach(GTK_GRID(tab_runtime), section_label(_("Audio")), 0,rr,2,1); rr++;
     gtk_grid_attach(GTK_GRID(tab_runtime), app.check_audio, 0,rr,1,1);
     gtk_grid_attach(GTK_GRID(tab_runtime), app.check_audio_realtime, 1,rr,1,1); rr++;
     gtk_grid_attach(GTK_GRID(tab_runtime), labeled(_("Audio out path"), with_browse(app.entry_audio_out,_("Browse"),G_CALLBACK(on_browse_audio_out),&app,_("Choose the output WAV file"))), 0,rr,2,1); rr++;
     gtk_grid_attach(GTK_GRID(tab_runtime), labeled(_("Audio in path"), with_browse(app.entry_audio_in,_("Browse"),G_CALLBACK(on_browse_audio_in),&app,_("Choose the input WAV file"))), 0,rr,2,1); rr++;
     gtk_grid_attach(GTK_GRID(tab_runtime), labeled(_("I2S instance"), app.spin_audio_instance), 0,rr,1,1);
     gtk_grid_attach(GTK_GRID(tab_runtime), labeled(_("Audio backend hint"), app.entry_audio_backend), 1,rr,1,1); rr++;
+    gtk_grid_attach(GTK_GRID(tab_runtime), section_label(_("Network")), 0,rr,2,1); rr++;
     gtk_grid_attach(GTK_GRID(tab_runtime), app.check_net_user, 0,rr,1,1);
     gtk_grid_attach(GTK_GRID(tab_runtime), labeled(_("Net mode"), app.entry_net_mode), 1,rr,1,1); rr++;
     gtk_grid_attach(GTK_GRID(tab_runtime), labeled(_("Hostfwd (; sep)"), app.entry_hostfwd), 0,rr,2,1); rr++;
@@ -2942,18 +3164,6 @@ int main(int argc, char **argv){
     gtk_grid_attach(GTK_GRID(tab_runtime), labeled(_("Wi-Fi password"), app.entry_wifi_password), 1,rr,1,1); rr++;
     gtk_grid_attach(GTK_GRID(tab_runtime), labeled(_("Wi-Fi auth"), app.combo_wifi_auth), 0,rr,1,1);
     gtk_grid_attach(GTK_GRID(tab_runtime), labeled(_("BLE HCI"), app.entry_ble_hci), 1,rr,1,1); rr++;
-    gtk_grid_attach(GTK_GRID(tab_runtime), app.check_littlefs_enabled, 0,rr,2,1); rr++;
-    gtk_grid_attach(GTK_GRID(tab_runtime), labeled(_("LittleFS image"), with_browse(app.entry_littlefs,_("Browse"),G_CALLBACK(on_browse_littlefs),&app,_("Choose the LittleFS image file"))), 0,rr,2,1); rr++;
-    gtk_grid_attach(GTK_GRID(tab_runtime), labeled(_("LittleFS label"), app.entry_littlefs_label), 0,rr,1,1);
-    gtk_grid_attach(GTK_GRID(tab_runtime), labeled(_("LittleFS mount"), app.entry_littlefs_mount), 1,rr,1,1); rr++;
-    gtk_grid_attach(GTK_GRID(tab_runtime), labeled(_("LittleFS offset"), app.entry_littlefs_offset), 0,rr,1,1);
-    gtk_grid_attach(GTK_GRID(tab_runtime), labeled(_("LittleFS size"), app.entry_littlefs_size), 1,rr,1,1); rr++;
-    gtk_grid_attach(GTK_GRID(tab_runtime), app.check_sd_enabled, 0,rr,1,1);
-    gtk_grid_attach(GTK_GRID(tab_runtime), labeled(_("SD mode"), app.combo_sd_mode), 1,rr,1,1); rr++;
-    gtk_grid_attach(GTK_GRID(tab_runtime), labeled(_("SD image"), app.entry_sd_image), 0,rr,2,1); rr++;
-    gtk_grid_attach(GTK_GRID(tab_runtime), labeled(_("SD card folder"), with_browse(app.entry_sd_dir,_("Browse..."),G_CALLBACK(on_browse_sd_dir),&app,_("Choose the SD card folder"))), 0,rr,2,1); rr++;
-    gtk_grid_attach(GTK_GRID(tab_runtime), labeled(_("SD slot"), app.entry_sd_slot), 0,rr,1,1);
-    gtk_grid_attach(GTK_GRID(tab_runtime), labeled(_("SD CS pin"), app.entry_sd_cs), 1,rr,1,1); rr++;
     drawer_fit_width(tab_runtime);
     gtk_scrolled_window_set_overlay_scrolling(GTK_SCROLLED_WINDOW(tab_runtime_sc), FALSE);
     g_signal_connect(btn_refresh_caps, "clicked", G_CALLBACK(on_refresh_caps), &app);
@@ -2973,7 +3183,6 @@ int main(int argc, char **argv){
     gtk_widget_set_tooltip_text(app.spin_audio_instance, _("I2S instance number for esp-emu. -1 keeps the default"));
     gtk_widget_set_tooltip_text(app.entry_audio_backend, _("Audio backend hint kept in the profile (default wav-file)"));
     gtk_widget_set_tooltip_text(app.check_net_user, _("Legacy switch for user-mode networking (--net user). Prefer Network enabled"));
-    gtk_widget_set_tooltip_text(app.check_net_enabled, _("Enable networking with --net. Mode is set in Net mode"));
     gtk_widget_set_tooltip_text(app.entry_net_mode, _("Mode for --net. user is the built-in user-mode networking"));
     gtk_widget_set_tooltip_text(app.entry_hostfwd, _("Host port forwards separated by ;. Format proto:hostaddr:hostport-guestaddr:guestport"));
     gtk_widget_set_tooltip_text(app.entry_wifi_ssid, _("Network name of the emulated Wi-Fi AP. Test profiles use testnet"));
@@ -2986,84 +3195,25 @@ int main(int argc, char **argv){
     gtk_widget_set_tooltip_text(app.check_gdb_halt, _("Wait for GDB before the firmware starts (--gdb-halt)"));
     gtk_widget_set_tooltip_text(app.check_trace_enabled, _("Write an esp-emu trace file (--trace). Conditional on esp-emu support"));
     gtk_widget_set_tooltip_text(app.entry_trace_path, _("Output file for the trace"));
-    gtk_widget_set_tooltip_text(app.entry_littlefs_label, _("Partition label of the LittleFS image (default littlefs)"));
-    gtk_widget_set_tooltip_text(app.entry_littlefs_mount, _("Mount path of the LittleFS image in the firmware"));
-    gtk_widget_set_tooltip_text(app.entry_littlefs_offset, _("Flash offset of the LittleFS partition. Must match the partition table"));
-    gtk_widget_set_tooltip_text(app.entry_littlefs_size, _("Size of the LittleFS partition. Must match the partition table"));
-    gtk_widget_set_tooltip_text(app.check_sd_enabled, _("Legacy SD switch. Use Card menu to eject or replace the image"));
-    gtk_widget_set_tooltip_text(app.entry_sd_image, _("Card image file (.img). Set it from Card menu > Replace image"));
-    gtk_widget_set_tooltip_text(app.combo_sd_mode, _("SD bus mode: sdmmc (ESP32-S3), sdspi or none"));
-    gtk_widget_set_tooltip_text(app.entry_sd_slot, _("SD slot index (legacy field kept in the profile)"));
-    gtk_widget_set_tooltip_text(app.entry_sd_cs, _("Chip-select GPIO for SPI SD (legacy field kept in the profile)"));
+    gtk_widget_set_tooltip_text(app.check_littlefs_enabled, _("Merge a LittleFS image into the flash image. Not an esp-emu run argument; the SD card is separate"));
+    gtk_widget_set_tooltip_text(app.entry_littlefs, _("Optional LittleFS image for the merge step"));
+    gtk_widget_set_tooltip_text(app.entry_littlefs_label, _("ES3C28P default_16MB.csv: spiffs"));
+    gtk_widget_set_tooltip_text(app.entry_littlefs_mount, _("/littlefs"));
+    gtk_widget_set_tooltip_text(app.entry_littlefs_offset, _("ES3C28P: 0xC90000 (13172736)"));
+    gtk_widget_set_tooltip_text(app.entry_littlefs_size, _("ES3C28P: 0x360000 (3538944)"));
+    gtk_widget_set_tooltip_text(app.check_sd_enabled, _("Card inserted. Unchecked: the next start runs with --no-sd. A running emulator cannot swap the card without a restart"));
+    gtk_widget_set_tooltip_text(app.entry_sd_image, _("Card image file (.img) that esp-emu mounts with --sd. Change it with Browse"));
+    gtk_widget_set_tooltip_text(app.combo_sd_mode, _("ES3C28P uses sdmmc (SDMMC 4-bit). Hint only: esp-emu mounts the image either way"));
+    gtk_widget_set_tooltip_text(app.entry_sd_slot, _("ES3C28P: 1 (Arduino SD_MMC). -1 = not set. Not used by the emulator"));
+    gtk_widget_set_tooltip_text(app.entry_sd_cs, _("SPI-SD only. ES3C28P: none, leave -1. Not used by the emulator"));
     gtk_widget_set_tooltip_text(app.entry_sd_dir, _("SD card folder. Start syncs it into the card image"));
+    gtk_widget_set_tooltip_text(app.spin_lcd_w, _("LCD width in pixels. 0 = board default. Pins, resolution and panel are largely compiled into the firmware (panel_config.h)"));
+    gtk_widget_set_tooltip_text(app.spin_lcd_h, _("LCD height in pixels. 0 = board default. Pins, resolution and panel are largely compiled into the firmware (panel_config.h)"));
 
-    GtkWidget *tab_future = gtk_box_new(GTK_ORIENTATION_VERTICAL,8); gtk_container_set_border_width(GTK_CONTAINER(tab_future),8);
-    gtk_notebook_append_page(GTK_NOTEBOOK(cfg_nb), scroll_wrap_fit(tab_future), gtk_label_new(_("Merge / Run")));
-    GtkWidget *t13 = gtk_frame_new(_("Merge wizard and profile import/export"));
-    GtkWidget *t13b = gtk_box_new(GTK_ORIENTATION_VERTICAL,4); gtk_container_add(GTK_CONTAINER(t13), t13b);
-    gtk_box_pack_start(GTK_BOX(t13b), wrap_label(_("Structure ready for the merge wizard (boot/part/app/fs, offsets, esptool dry-run) and profile import/export.")), FALSE,FALSE,4);
-    GtkWidget *t13btn = gtk_button_new_with_label(_("Open merge wizard")); gtk_box_pack_start(GTK_BOX(t13b), t13btn, FALSE,FALSE,0); g_signal_connect(t13btn, "clicked", G_CALLBACK(on_merge_wizard), &app);
-    gtk_widget_set_halign(t13btn, GTK_ALIGN_FILL);
-    { GtkWidget *t13lbl = gtk_bin_get_child(GTK_BIN(t13btn)); if (GTK_IS_LABEL(t13lbl)) { gtk_label_set_ellipsize(GTK_LABEL(t13lbl), PANGO_ELLIPSIZE_END); gtk_label_set_max_width_chars(GTK_LABEL(t13lbl), 24); } }
-    gtk_widget_set_tooltip_text(t13btn, _("Merge wizard is not built yet. Use ./start.sh emu merge"));
-    GtkWidget *t14 = gtk_frame_new(_("Run modes and advanced logs"));
-    GtkWidget *t14b = gtk_box_new(GTK_ORIENTATION_VERTICAL,4); gtk_container_add(GTK_CONTAINER(t14), t14b);
-    gtk_box_pack_start(GTK_BOX(t14b), wrap_label(_("Basic telemetry is in the Processes/Telemetry tabs. Run modes and advanced filters: planned.")), FALSE,FALSE,4);
-    gtk_box_pack_start(GTK_BOX(t14b), wrap_label(_("Run mode and backend-only/--no-host are available in Runtime/Audio/Network. Log filters/export are available in the log panel.")), FALSE,FALSE,0);
-    gtk_box_pack_start(GTK_BOX(tab_future), t13, FALSE,FALSE,0); gtk_box_pack_start(GTK_BOX(tab_future), t14, FALSE,FALSE,0);
 
-    GtkWidget *tab_parts = gtk_box_new(GTK_ORIENTATION_VERTICAL,6); gtk_container_set_border_width(GTK_CONTAINER(tab_parts),8);
-    gtk_notebook_append_page(GTK_NOTEBOOK(cfg_nb), scroll_wrap_fit(tab_parts), gtk_label_new(_("Storage/Parts")));
-    app.entry_parts_dir = gtk_entry_new(); gtk_entry_set_placeholder_text(GTK_ENTRY(app.entry_parts_dir), "simulator/emu/parts");
-    gtk_entry_set_text(GTK_ENTRY(app.entry_parts_dir), "simulator/emu/parts");
-    GtkWidget *parts_dir_row = gtk_box_new(GTK_ORIENTATION_HORIZONTAL,4);
-    gtk_box_pack_start(GTK_BOX(parts_dir_row), gtk_label_new(_("Parts dir (.wasm):")), FALSE,FALSE,0);
-    gtk_box_pack_start(GTK_BOX(parts_dir_row), app.entry_parts_dir, TRUE,TRUE,0);
-    GtkWidget *btn_parts_scan = gtk_button_new_with_label(_("Scan"));
-    GtkWidget *btn_parts_validate = gtk_button_new_with_label(_("Check conflicts"));
-    gtk_box_pack_start(GTK_BOX(parts_dir_row), btn_parts_scan, FALSE,FALSE,0);
-    gtk_box_pack_start(GTK_BOX(parts_dir_row), btn_parts_validate, FALSE,FALSE,0);
-    gtk_box_pack_start(GTK_BOX(tab_parts), parts_dir_row, FALSE,FALSE,0);
-    GtkWidget *parts_inst_row = gtk_box_new(GTK_ORIENTATION_HORIZONTAL,4);
-    app.entry_parts_instance_id = gtk_entry_new(); gtk_entry_set_placeholder_text(GTK_ENTRY(app.entry_parts_instance_id), _("instance id"));
-    app.entry_parts_part_name = gtk_entry_new(); gtk_entry_set_placeholder_text(GTK_ENTRY(app.entry_parts_part_name), _("part name (empty=1st)"));
-    gtk_box_pack_start(GTK_BOX(parts_inst_row), labeled(_("Instance ID"), app.entry_parts_instance_id), TRUE,TRUE,0);
-    gtk_box_pack_start(GTK_BOX(parts_inst_row), labeled(_("Part name"), app.entry_parts_part_name), TRUE,TRUE,0);
-    GtkWidget *btn_parts_add = gtk_button_new_with_label(_("Add/Config"));
-    GtkWidget *btn_parts_remove = gtk_button_new_with_label(_("Remove"));
-    gtk_box_pack_start(GTK_BOX(parts_inst_row), btn_parts_add, FALSE,FALSE,0);
-    gtk_box_pack_start(GTK_BOX(parts_inst_row), btn_parts_remove, FALSE,FALSE,0);
-    gtk_box_pack_start(GTK_BOX(tab_parts), parts_inst_row, FALSE,FALSE,0);
-    GtkWidget *parts_note = gtk_label_new(_("Parts WASM/sidecar: discovery, claims/wiring, conflicts and capabilities. Status: conditional/needs-runtime-host (no real cosim runtime integration; hooks/placeholders)."));
-    gtk_label_set_xalign(GTK_LABEL(parts_note), 0.0); gtk_label_set_line_wrap(GTK_LABEL(parts_note), TRUE);
-    gtk_box_pack_start(GTK_BOX(tab_parts), parts_note, FALSE,FALSE,0);
-    GtkWidget *parts_split = gtk_paned_new(GTK_ORIENTATION_VERTICAL);
-    GtkWidget *parts_list_sc = gtk_scrolled_window_new(NULL,NULL);
-    GtkWidget *parts_list_tv = gtk_text_view_new(); gtk_text_view_set_editable(GTK_TEXT_VIEW(parts_list_tv),FALSE); gtk_text_view_set_monospace(GTK_TEXT_VIEW(parts_list_tv),TRUE); gtk_text_view_set_wrap_mode(GTK_TEXT_VIEW(parts_list_tv),GTK_WRAP_WORD_CHAR);
-    app.parts_list_buf = gtk_text_view_get_buffer(GTK_TEXT_VIEW(parts_list_tv)); gtk_container_add(GTK_CONTAINER(parts_list_sc), parts_list_tv);
-    GtkWidget *parts_rep_sc = gtk_scrolled_window_new(NULL,NULL);
-    GtkWidget *parts_rep_tv = gtk_text_view_new(); gtk_text_view_set_editable(GTK_TEXT_VIEW(parts_rep_tv),FALSE); gtk_text_view_set_monospace(GTK_TEXT_VIEW(parts_rep_tv),TRUE); gtk_text_view_set_wrap_mode(GTK_TEXT_VIEW(parts_rep_tv),GTK_WRAP_WORD_CHAR);
-    app.parts_report_buf = gtk_text_view_get_buffer(GTK_TEXT_VIEW(parts_rep_tv)); gtk_container_add(GTK_CONTAINER(parts_rep_sc), parts_rep_tv);
-    gtk_paned_pack1(GTK_PANED(parts_split), parts_list_sc, TRUE, FALSE);
-    /* Report pane: titled, so it is not an unexplained "Diagnostics" block */
-    GtkWidget *parts_rep_frame = gtk_frame_new(_("Parts report")); GtkWidget *parts_rep_box = gtk_box_new(GTK_ORIENTATION_VERTICAL,4);
-    gtk_container_set_border_width(GTK_CONTAINER(parts_rep_box),4); gtk_box_pack_start(GTK_BOX(parts_rep_box), wrap_label(_("Result of the last scan, add or conflict check. Counts also show in the status bar.")), FALSE,FALSE,0);
-    gtk_box_pack_start(GTK_BOX(parts_rep_box), parts_rep_sc, TRUE,TRUE,0); gtk_container_add(GTK_CONTAINER(parts_rep_frame), parts_rep_box);
-    gtk_widget_set_tooltip_text(parts_rep_frame, _("Messages from the Storage/Parts actions (scan, add, remove, conflict check)"));
-    gtk_paned_pack2(GTK_PANED(parts_split), parts_rep_frame, FALSE, FALSE);
-    gtk_widget_set_vexpand(parts_split, TRUE);
-    gtk_box_pack_start(GTK_BOX(tab_parts), parts_split, TRUE, TRUE, 0);
-    g_signal_connect(btn_parts_scan, "clicked", G_CALLBACK(on_parts_scan), &app);
-    g_signal_connect(btn_parts_add, "clicked", G_CALLBACK(on_parts_add_instance), &app);
-    g_signal_connect(btn_parts_remove, "clicked", G_CALLBACK(on_parts_remove_instance), &app);
-    g_signal_connect(btn_parts_validate, "clicked", G_CALLBACK(on_parts_validate), &app);
-    gtk_widget_set_tooltip_text(app.entry_parts_dir, _("Folder with .wasm parts. Scan reads this folder"));
-    gtk_widget_set_tooltip_text(btn_parts_scan, _("Look for .wasm parts in the parts folder"));
-    gtk_widget_set_tooltip_text(btn_parts_validate, _("Check the parts list for claim and wiring conflicts"));
-    gtk_widget_set_tooltip_text(app.entry_parts_instance_id, _("Id of this part instance in the parts list"));
-    gtk_widget_set_tooltip_text(app.entry_parts_part_name, _("Name of the part to add"));
-    gtk_widget_set_tooltip_text(btn_parts_add, _("Add the part instance to the list, or update its settings"));
-    gtk_widget_set_tooltip_text(btn_parts_remove, _("Remove the selected part instance from the list"));
+    /* Rail pages 3 and 4: Storage and Components (L1 owns the rail and the Profile/Runtime pages). */
+    gtk_notebook_append_page(GTK_NOTEBOOK(cfg_nb), scroll_wrap_fit(build_storage_page(&app)), gtk_label_new(_("Storage")));
+    gtk_notebook_append_page(GTK_NOTEBOOK(cfg_nb), scroll_wrap_fit(build_components_page(&app)), gtk_label_new(_("Components")));
 
     /* One notebook merges the 6 tool tabs and the 3 log tabs (packed into the bottom dock further below). */
     GtkWidget *left_bottom = gtk_notebook_new(); gtk_notebook_set_scrollable(GTK_NOTEBOOK(left_bottom), TRUE);
@@ -3080,8 +3230,22 @@ int main(int argc, char **argv){
     GtkWidget *dbg_sc = gtk_scrolled_window_new(NULL,NULL);
     GtkWidget *dbg_tv = gtk_text_view_new(); gtk_text_view_set_editable(GTK_TEXT_VIEW(dbg_tv),FALSE); gtk_text_view_set_monospace(GTK_TEXT_VIEW(dbg_tv),TRUE);
     app.debug_buf = gtk_text_view_get_buffer(GTK_TEXT_VIEW(dbg_tv)); gtk_container_add(GTK_CONTAINER(dbg_sc), dbg_tv);
-    gtk_notebook_append_page(GTK_NOTEBOOK(left_bottom), dbg_sc, gtk_label_new(_("Debug/GDB/Trace"))); app.dock_pages_tools[3] = dbg_sc;
-    gtk_widget_set_tooltip_text(dbg_sc, _("Read-only status of the GDB stub and trace options. Set them in Runtime/Audio/Network"));
+    GtkWidget *dbg_page = gtk_box_new(GTK_ORIENTATION_VERTICAL,4);
+    {   /* GDB and Trace controls (moved from the Runtime page), above the read-only status text */
+        GtkWidget *dg = gtk_grid_new(); gtk_grid_set_row_spacing(GTK_GRID(dg),4); gtk_grid_set_column_spacing(GTK_GRID(dg),8); gtk_container_set_border_width(GTK_CONTAINER(dg),6);
+        GtkWidget *l_port = gtk_label_new(_("GDB port")); GtkWidget *l_tr = gtk_label_new(_("Trace path"));
+        gtk_widget_set_hexpand(app.entry_trace_path, TRUE);
+        gtk_grid_attach(GTK_GRID(dg), app.check_gdb_enabled, 0,0,1,1);
+        gtk_grid_attach(GTK_GRID(dg), l_port, 1,0,1,1); gtk_grid_attach(GTK_GRID(dg), app.spin_gdb_port, 2,0,1,1);
+        gtk_grid_attach(GTK_GRID(dg), app.check_gdb_halt, 3,0,1,1);
+        gtk_grid_attach(GTK_GRID(dg), app.check_trace_enabled, 0,1,1,1);
+        gtk_grid_attach(GTK_GRID(dg), l_tr, 1,1,1,1);
+        gtk_grid_attach(GTK_GRID(dg), with_browse(app.entry_trace_path,_("Browse"),G_CALLBACK(on_browse_trace),&app,_("Choose the trace output file")), 2,1,2,1);
+        gtk_box_pack_start(GTK_BOX(dbg_page), dg, FALSE,FALSE,0);
+    }
+    gtk_box_pack_start(GTK_BOX(dbg_page), dbg_sc, TRUE,TRUE,0);
+    gtk_notebook_append_page(GTK_NOTEBOOK(left_bottom), dbg_page, gtk_label_new(_("Debug/GDB/Trace"))); app.dock_pages_tools[3] = dbg_page;
+    gtk_widget_set_tooltip_text(dbg_page, _("GDB and Trace controls and status. The GDB port is derived from the instance"));
     GtkWidget *gpio_sc = gtk_scrolled_window_new(NULL,NULL);
     GtkWidget *gpio_tv = gtk_text_view_new(); gtk_text_view_set_editable(GTK_TEXT_VIEW(gpio_tv),FALSE); gtk_text_view_set_monospace(GTK_TEXT_VIEW(gpio_tv),TRUE);
     app.gpio_buf = gtk_text_view_get_buffer(GTK_TEXT_VIEW(gpio_tv)); gtk_container_add(GTK_CONTAINER(gpio_sc), gpio_tv);
@@ -3109,7 +3273,7 @@ int main(int argc, char **argv){
     GtkWidget *wf_status_tv = gtk_text_view_new(); gtk_text_view_set_editable(GTK_TEXT_VIEW(wf_status_tv),FALSE); gtk_text_view_set_monospace(GTK_TEXT_VIEW(wf_status_tv),TRUE);
     app.workflow_buf = gtk_text_view_get_buffer(GTK_TEXT_VIEW(wf_status_tv)); gtk_container_add(GTK_CONTAINER(wf_status_sc), wf_status_tv);
     gtk_box_pack_start(GTK_BOX(wf_box), wf_status_sc, FALSE,TRUE,0);
-    gtk_notebook_append_page(GTK_NOTEBOOK(left_bottom), wf_box, gtk_label_new(_("Code/Build/Run"))); app.dock_pages_tools[5] = wf_box;
+    gtk_notebook_append_page(GTK_NOTEBOOK(left_bottom), wf_box, gtk_label_new(_("Code/Build"))); app.dock_pages_tools[5] = wf_box;
     g_signal_connect(btn_wf_open, "clicked", G_CALLBACK(on_workflow_open_file), &app);
     g_signal_connect(btn_wf_save, "clicked", G_CALLBACK(on_workflow_save_file), &app);
     gtk_widget_set_tooltip_text(btn_wf_open, _("Open a file in the workflow editor"));
@@ -3153,6 +3317,7 @@ int main(int argc, char **argv){
         /* card + hint live in a scrolled window so a short canvas scrolls them instead of clipping */
         app.w_summary_hint = gtk_label_new(_("Simulator → Start (Ctrl+R)")); gtk_style_context_add_class(gtk_widget_get_style_context(app.w_summary_hint), "hint");
         gtk_widget_set_halign(app.w_summary_hint, GTK_ALIGN_CENTER); gtk_widget_set_margin_top(app.w_summary_hint, 8);
+        gtk_widget_set_tooltip_text(app.w_summary_hint, _("Ctrl+R starts the emulator. Start is also in the toolbar and in Simulator menu"));
         GtkWidget *wrap = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0); gtk_widget_set_valign(wrap, GTK_ALIGN_CENTER); gtk_widget_set_halign(wrap, GTK_ALIGN_CENTER);
         gtk_widget_set_margin_start(wrap, 16); gtk_widget_set_margin_end(wrap, 16); gtk_widget_set_margin_top(wrap, 16); gtk_widget_set_margin_bottom(wrap, 16);
         gtk_box_pack_start(GTK_BOX(wrap), card, FALSE, FALSE, 0); gtk_box_pack_start(GTK_BOX(wrap), app.w_summary_hint, FALSE, FALSE, 0);
@@ -3205,7 +3370,8 @@ int main(int argc, char **argv){
     gtk_box_pack_start(GTK_BOX(info_box), app.canvas_label, FALSE,FALSE,0);
     gtk_box_pack_start(GTK_BOX(info_box), app.path_label, FALSE,FALSE,0);
     GtkWidget *info_note = gtk_label_new(_("Telemetry is integrated in 'Processes/Telemetry'. Filters/export apply to the unified buffer (console_log).")); gtk_label_set_xalign(GTK_LABEL(info_note),0.0);
-    gtk_label_set_ellipsize(GTK_LABEL(info_note), PANGO_ELLIPSIZE_END); gtk_label_set_ellipsize(GTK_LABEL(app.canvas_label), PANGO_ELLIPSIZE_END);
+    gtk_label_set_line_wrap(GTK_LABEL(info_note), TRUE); gtk_label_set_max_width_chars(GTK_LABEL(info_note), 70);
+    gtk_label_set_ellipsize(GTK_LABEL(app.canvas_label), PANGO_ELLIPSIZE_END);
     gtk_box_pack_start(GTK_BOX(info_box), info_note, FALSE,FALSE,0);
     gtk_notebook_append_page(GTK_NOTEBOOK(left_bottom), info_box, gtk_label_new(_("Info"))); app.dock_pages_logs[2] = info_box;
     g_signal_connect(app.entry_log_filter, "changed", G_CALLBACK(on_log_filter_changed), &app);
@@ -3225,10 +3391,6 @@ int main(int argc, char **argv){
     add_tooltip(app.check_wifi, _("Wi-Fi: conditional(version/tool/fw). Visible in the UI; the full flow depends on support/args/firmware."));
     add_tooltip(app.check_ble, _("BLE: conditional(version/tool). Usually needs external ELF/HCI; not guaranteed."));
     add_tooltip(app.check_audio_realtime, _("Realtime audio: conditional(version/tool). Prefer I2S WAV from file when applicable."));
-    add_tooltip(app.check_littlefs_enabled, _("LittleFS conditional (image/layout). SD: Card menu (esp-emu 1.1.0 --sd)."));
-    add_tooltip(app.entry_littlefs, _("Optional LittleFS image. SD: Card menu (esp-emu 1.1.0 --sd)."));
-    add_tooltip(app.spin_lcd_w, _("Pins/resolution/panel largely compiled (panel_config.h/lcd_touch_host.c). Partial runtime override."));
-    add_tooltip(app.spin_lcd_h, _("Pins/resolution/panel largely compiled (panel_config.h/lcd_touch_host.c). Partial runtime override."));
     add_tooltip(app.entry_cosim_board, _("Cosim: --cosim-board in-process preferred; TCP/unix/bridge conditional on version/host."));
     add_tooltip(app.entry_extra, _("Extra args passed to esp-emu (unknown flags may fail)."));
 
@@ -3249,13 +3411,15 @@ int main(int argc, char **argv){
     app.mi_start = menu_add(m_sim, _("Start"), G_CALLBACK(on_start), &app, _("Start the emulator with the active profile (Ctrl+R)"));
     app.mi_stop = menu_add(m_sim, _("Stop"), G_CALLBACK(on_stop), &app, _("Stop the emulator and the host (Ctrl+.)"));
     GtkWidget *mi_restart = menu_add(m_sim, _("Restart"), G_CALLBACK(on_restart), &app, _("Stop and start the emulator again (Ctrl+Shift+R)"));
+    menu_add(m_sim, _("Rotate screen"), G_CALLBACK(on_rotate_screen), &app, _("Turn the screen to the next rotation (0 to 3) and restart the emulator with it. Changes made in the firmware Settings are followed too"));
     gtk_widget_add_accelerator(app.mi_start, "activate", accel, GDK_KEY_r, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
     gtk_widget_add_accelerator(app.mi_stop, "activate", accel, GDK_KEY_period, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE);
     gtk_widget_add_accelerator(mi_restart, "activate", accel, GDK_KEY_r, GDK_CONTROL_MASK | GDK_SHIFT_MASK, GTK_ACCEL_VISIBLE);
     gtk_menu_shell_append(GTK_MENU_SHELL(m_sim), gtk_separator_menu_item_new());
     menu_add(m_sim, _("Validate"), G_CALLBACK(on_validate), &app, _("Run validation again and show the results in the Validation tab"));
+    menu_add(m_sim, _("Merge firmware image…"), G_CALLBACK(on_merge_wizard), &app, _("Joins bootloader, partition table, app and an optional LittleFS image into one flash image (merged .bin) that esp-emu boots. Needed only after you build new firmware; the KryonOS v3 presets already ship a merged.bin. Same as ./start.sh emu merge."));
     menu_add(m_sim, _("Copy command"), G_CALLBACK(on_copy_command), &app, _("Copy the effective esp-emu command line to the clipboard"));
-    menu_add(m_sim, _("Build emulator (start.sh)"), G_CALLBACK(on_workflow_build), &app, _("Run the build command set in Code/Build/Run > Build cmd"));
+    menu_add(m_sim, _("Build emulator (start.sh)"), G_CALLBACK(on_workflow_build), &app, _("Run the build command set in Code/Build > Build cmd"));
     GtkWidget *m_card = menu_top(menubar, _("_Card"));
     menu_add(m_card, _("Replace image… (restarts the emulator)"), G_CALLBACK(on_card_replace), &app,
              _("esp-emu 1.1.0 cannot swap the card while running: if the emulator is running, it is restarted in a controlled way."));
@@ -3265,7 +3429,7 @@ int main(int argc, char **argv){
     menu_add(m_card, _("Build image from folder…"), G_CALLBACK(on_card_build), &app,
              _("./start.sh card image --force <folder> <image>: REPLACES the image (what the firmware wrote to the card is lost)."));
     menu_add(m_card, _("Extract image to folder…"), G_CALLBACK(on_card_extract), &app, "./start.sh card extract --force <image> <folder>");
-    menu_add(m_card, _("Open card folder"), G_CALLBACK(on_card_open_folder), &app, "xdg-open simulator/SD_Card");
+    menu_add(m_card, _("Open card folder"), G_CALLBACK(on_card_open_folder), &app, _("Open the card folder (set on the Storage page; simulator/SD_Card when none is set)"));
     GtkWidget *m_view = menu_top(menubar, _("_View"));
     app.mi_view_cfg = menu_check(m_view, _("Configuration panel"), app.cfg.ui_view_cfg, G_CALLBACK(on_view_cfg_toggled), &app);
     app.mi_view_bottom = menu_check(m_view, _("Bottom panel"), app.cfg.ui_view_bottom, G_CALLBACK(on_view_dock_toggled), &app);
@@ -3309,6 +3473,7 @@ int main(int argc, char **argv){
     gtk_widget_set_tooltip_text(app.btn_dock, _("Show/hide the bottom panel (validation, command, telemetry, logs)"));
     g_signal_connect(app.btn_dock, "toggled", G_CALLBACK(on_dock_btn_toggled), &app);
     gtk_box_pack_start(GTK_BOX(statusbar), app.btn_dock, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(statusbar), app.lbl_timer, FALSE, FALSE, 0); /* run time, moved from the toolbar */
     gtk_box_pack_start(GTK_BOX(statusbar), app.status_label, TRUE, TRUE, 0);
     app.lbl_val_result = gtk_label_new(""); gtk_label_set_ellipsize(GTK_LABEL(app.lbl_val_result), PANGO_ELLIPSIZE_END);
     app.lbl_diag = gtk_label_new(""); gtk_label_set_ellipsize(GTK_LABEL(app.lbl_diag), PANGO_ELLIPSIZE_END); gtk_label_set_max_width_chars(GTK_LABEL(app.lbl_diag), 44);
@@ -3380,12 +3545,12 @@ int main(int argc, char **argv){
 
 
     sync_ui_from_state(&app); app.cfg.run_mode = app.run_mode; update_panels(&app); render_validation(&app,false);
-    render_parts_ui(&app); refresh_parts_runtime_hints(&app); render_debug_gpio_panels(&app);
+    render_debug_gpio_panels(&app);
     refresh_telemetry(&app);
     apply_log_filters(&app);
     append_launcher_log(&app, "Unified frontend: config/profile + embedded canvas (sim_host) + esp-emu subprocess.");
-    append_launcher_log(&app, _("Merge wizard, run modes (UI and backend-only), log filters and export, and the capability, probe, storage, audio and network UI are integrated (partial where conditional or blocked)."));
-    append_launcher_log(&app, _("Telemetry and parts are integrated in the UI with state and capabilities; deep runtime data and WASM execution depend on the host, the emulator and tools (needs runtime host, conditional)."));
+    append_launcher_log(&app, _("Merge firmware image is in the Simulator menu. Run modes, log filters and export, capability probe, storage, audio and network settings are available (partial where conditional or blocked)."));
+    append_launcher_log(&app, _("Telemetry and components are integrated in the UI with state and capabilities; deep runtime data and WASM execution depend on the host, the emulator and tools (needs runtime host, conditional)."));
     append_host_log(&app, "Host canvas attaches on Start. Cosim: TCP direto ou Unix socket via ponte socat (conditional tool; esp-emu usa --cosim-tcp internamente).");
     append_host_log(&app, _("Limits: SD via --sd (esp-emu 1.1.0, Card menu), release without ELF conditional, pins/resolution partial runtime/compiled."));
     set_dirty(&app, FALSE);
